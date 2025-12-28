@@ -1,10 +1,55 @@
+import { useState, useEffect } from 'react';
 import { Inbox, CheckSquare, Grid3X3, Calendar, PlayCircle, BarChart3, Zap, Flame, Database, ArrowRight, FolderOpen, FileText, Settings, CalendarDays } from 'lucide-react';
 import { useTaskStore, STAGES } from '../stores/useTaskStore';
 import { useStatsStore, getLevelInfo } from '../stores/useStatsStore';
 
+// Wisdom quotes from Lao Tzu and Buddha
+const QUOTES = [
+  { text: "Hành trình ngàn dặm bắt đầu từ một bước chân.", author: "Lão Tử" },
+  { text: "Biết người là khôn, biết mình là sáng.", author: "Lão Tử" },
+  { text: "Nước mềm mại nhưng có thể xuyên đá.", author: "Lão Tử" },
+  { text: "Đừng cưỡng cầu, hãy để mọi thứ tự nhiên.", author: "Lão Tử" },
+  { text: "Kẻ chiến thắng người khác là mạnh, tự thắng mình mới là cường.", author: "Lão Tử" },
+  { text: "Im lặng là nguồn sức mạnh vĩ đại.", author: "Lão Tử" },
+  { text: "Tâm an, vạn sự an.", author: "Đức Phật" },
+  { text: "Giọt nước có thể xuyên đá, không phải vì sức mạnh mà vì sự kiên trì.", author: "Đức Phật" },
+  { text: "Quá khứ không truy, tương lai không đợi, an trú trong hiện tại.", author: "Đức Phật" },
+  { text: "Hạnh phúc không phải là điều có sẵn, nó đến từ hành động của bạn.", author: "Đức Phật" },
+  { text: "Người tức giận bạn không thể làm hại bạn, chính cơn giận của bạn mới hại bạn.", author: "Đức Phật" },
+  { text: "Mỗi buổi sáng là một cơ hội mới. Đừng lãng phí nó.", author: "Đức Phật" },
+];
+
+const OWNER_NAME = "Trần Quang Triều";
+
 export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataManager }) {
   const tasks = useTaskStore((state) => state.tasks);
   const { totalXP, currentStreak } = useStatsStore();
+
+  // Random quote that changes daily
+  const [quote, setQuote] = useState(QUOTES[0]);
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const savedDate = localStorage.getItem('workflow-quote-date');
+    const savedIndex = localStorage.getItem('workflow-quote-index');
+
+    if (savedDate === today && savedIndex) {
+      setQuote(QUOTES[parseInt(savedIndex)]);
+    } else {
+      const randomIndex = Math.floor(Math.random() * QUOTES.length);
+      setQuote(QUOTES[randomIndex]);
+      localStorage.setItem('workflow-quote-date', today);
+      localStorage.setItem('workflow-quote-index', randomIndex.toString());
+    }
+  }, []);
+
+  // Get greeting based on time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Chào buổi sáng';
+    if (hour < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
+  };
 
   // Count by stage
   const inboxCount = tasks.filter(t => t.stage === STAGES.INBOX).length;
@@ -38,6 +83,18 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
       <div className="sidebar-logo">
         <Zap size={28} />
         <h1>WorkFlow</h1>
+      </div>
+
+      {/* Owner Greeting */}
+      <div className="owner-greeting">
+        <p className="greeting-text">{getGreeting()},</p>
+        <p className="owner-name">{OWNER_NAME} ✨</p>
+      </div>
+
+      {/* Daily Quote */}
+      <div className="daily-quote">
+        <p className="quote-text">"{quote.text}"</p>
+        <p className="quote-author">— {quote.author}</p>
       </div>
 
       {/* XP & Level Display */}
@@ -241,6 +298,48 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
           border-radius: var(--radius-sm);
           font-size: 0.65rem;
           font-family: monospace;
+        }
+        
+        .owner-greeting {
+          text-align: center;
+          margin-bottom: var(--spacing-md);
+        }
+        
+        .greeting-text {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          margin-bottom: 2px;
+        }
+        
+        .owner-name {
+          font-size: 1.1rem;
+          font-weight: 700;
+          background: linear-gradient(135deg, var(--primary), var(--accent));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        .daily-quote {
+          background: var(--bg-secondary);
+          border-radius: var(--radius-lg);
+          padding: var(--spacing-md);
+          margin-bottom: var(--spacing-md);
+          border-left: 3px solid var(--primary);
+        }
+        
+        .quote-text {
+          font-size: 0.8rem;
+          color: var(--text-secondary);
+          font-style: italic;
+          line-height: 1.4;
+          margin-bottom: var(--spacing-xs);
+        }
+        
+        .quote-author {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          text-align: right;
         }
       `}</style>
     </aside>
