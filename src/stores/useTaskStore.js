@@ -8,15 +8,17 @@ export const STAGES = {
     SCHEDULED: 'scheduled',    // Has date/time assigned
     IN_PROGRESS: 'in_progress', // Currently being worked on
     DONE: 'done',              // Completed
+    SOMEDAY: 'someday',        // GTD: Someday/Maybe list
 };
 
 // Valid stage transitions
 const VALID_TRANSITIONS = {
-    [STAGES.INBOX]: [STAGES.PRIORITIZED, STAGES.DONE],
-    [STAGES.PRIORITIZED]: [STAGES.SCHEDULED, STAGES.INBOX, STAGES.DONE],
+    [STAGES.INBOX]: [STAGES.PRIORITIZED, STAGES.DONE, STAGES.SOMEDAY],
+    [STAGES.PRIORITIZED]: [STAGES.SCHEDULED, STAGES.INBOX, STAGES.DONE, STAGES.SOMEDAY],
     [STAGES.SCHEDULED]: [STAGES.IN_PROGRESS, STAGES.PRIORITIZED, STAGES.DONE],
     [STAGES.IN_PROGRESS]: [STAGES.DONE, STAGES.SCHEDULED],
     [STAGES.DONE]: [STAGES.INBOX], // Can reset to inbox
+    [STAGES.SOMEDAY]: [STAGES.INBOX, STAGES.PRIORITIZED], // Can activate later
 };
 
 const generateId = () => {
@@ -98,7 +100,14 @@ export const useTaskStore = create(
                     subtasks: taskData.subtasks || [],
                     recurrence: taskData.recurrence || null,
                     isRecurring: taskData.isRecurring || false,
-                    project: taskData.project || null, // Project ID
+                    // Goal alignment
+                    goalId: taskData.goalId || null,
+                    milestoneId: taskData.milestoneId || null,
+                    // MIT - Most Important Task (Brian Tracy)
+                    isMIT: false,
+                    mitDate: null, // Date when marked as MIT
+                    // Pomodoro tracking
+                    pomodoroCount: 0,
                     // Pipeline stage - new tasks start in inbox
                     stage: STAGES.INBOX,
                     completed: false,
@@ -188,6 +197,60 @@ export const useTaskStore = create(
                 }));
             },
 
+            // ========== MIT - Most Important Tasks ==========
+            setMIT: (taskId, isMIT) => {
+                const today = new Date().toISOString().split('T')[0];
+                set((state) => ({
+                    tasks: state.tasks.map((t) =>
+                        t.id === taskId
+                            ? { ...t, isMIT, mitDate: isMIT ? today : null }
+                            : t
+                    ),
+                }));
+            },
+
+            getTodayMITs: () => {
+                const today = new Date().toISOString().split('T')[0];
+                return get().tasks.filter(t => t.isMIT && t.mitDate === today && !t.completed);
+            },
+
+            clearExpiredMITs: () => {
+                const today = new Date().toISOString().split('T')[0];
+                set((state) => ({
+                    tasks: state.tasks.map((t) =>
+                        t.isMIT && t.mitDate !== today && !t.completed
+                            ? { ...t, isMIT: false, mitDate: null }
+                            : t
+                    ),
+                }));
+            },
+
+            // ========== Someday/Maybe ==========
+            moveToSomeday: (taskId) => {
+                set((state) => ({
+                    tasks: state.tasks.map((t) =>
+                        t.id === taskId ? { ...t, stage: STAGES.SOMEDAY } : t
+                    ),
+                }));
+            },
+
+            activateFromSomeday: (taskId) => {
+                set((state) => ({
+                    tasks: state.tasks.map((t) =>
+                        t.id === taskId ? { ...t, stage: STAGES.INBOX } : t
+                    ),
+                }));
+            },
+
+            // ========== Pomodoro Tracking ==========
+            incrementPomodoro: (taskId) => {
+                set((state) => ({
+                    tasks: state.tasks.map((t) =>
+                        t.id === taskId ? { ...t, pomodoroCount: (t.pomodoroCount || 0) + 1 } : t
+                    ),
+                }));
+            },
+
             // Subtask actions
             addSubtask: (taskId, subtaskTitle) => {
                 const subtask = {
@@ -261,6 +324,24 @@ export const useTaskStore = create(
                             completedAt: null,
                             subtasks: (task.subtasks || []).map(st => ({ ...st, completed: false })),
                         });
+                    }
+                }
+
+                // Auto-update milestone progress
+                if (task.milestoneId) {
+                    const allTasks = get().tasks;
+                    const milestoneTasks = allTasks.filter(t => t.milestoneId === task.milestoneId);
+                    const completedCount = milestoneTasks.filter(t => t.stage === STAGES.DONE || t.id === id).length;
+                    const progress = milestoneTasks.length > 0
+                        ? Math.round((completedCount / milestoneTasks.length) * 100)
+                        : 0;
+
+                    // Update milestone progress in goal store
+                    try {
+                        const { useGoalStore } = require('./useGoalStore');
+                        useGoalStore.getState().updateMilestoneProgress(task.milestoneId, progress);
+                    } catch (e) {
+                        console.log('Goal store not available');
                     }
                 }
 

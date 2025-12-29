@@ -8,15 +8,28 @@ import FocusQueue from './components/FocusQueue';
 import DoneView from './components/DoneView';
 import StatsPanel from './components/StatsPanel';
 import WeeklyReview from './components/WeeklyReview';
-import ProjectsView from './components/ProjectsView';
 import TemplatesView from './components/TemplatesView';
 import SettingsView from './components/SettingsView';
+import GoalsView from './components/GoalsView';
+import WheelOfLife from './components/WheelOfLife';
+import HabitTracker from './components/HabitTracker';
+import InsightsView from './components/InsightsView';
+import AchievementsView from './components/AchievementsView';
 import FocusMode from './components/FocusMode';
 import QuickAdd from './components/QuickAdd';
 import ThemeToggle from './components/ThemeToggle';
 import TaskDetail from './components/TaskDetail';
 import DataManager from './components/DataManager';
+import OnboardingModal from './components/OnboardingModal';
+import DailyCheckIn from './components/DailyCheckIn';
+import DailyMIT from './components/DailyMIT';
+import ShutdownRitual from './components/ShutdownRitual';
+import SomedayView from './components/SomedayView';
+import GoalMatrix from './components/GoalMatrix';
+import TodayView from './components/TodayView';
+import ToastContainer from './components/ToastContainer';
 import { useTaskStore, STAGES } from './stores/useTaskStore';
+import { useHabitStore } from './stores/useHabitStore';
 import { useNotificationStore } from './stores/useNotificationStore';
 
 export default function App() {
@@ -30,10 +43,18 @@ export default function App() {
     const [selectedTask, setSelectedTask] = useState(null);
     const [showDataManager, setShowDataManager] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showOnboarding, setShowOnboarding] = useState(() => {
+        return !localStorage.getItem('workflow-onboarding-done');
+    });
+    const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
+    const [showMIT, setShowMIT] = useState(false);
+    const [showShutdown, setShowShutdown] = useState(false);
 
     const tasks = useTaskStore((state) => state.tasks);
+    const getTodayMITs = useTaskStore((state) => state.getTodayMITs);
     const startTask = useTaskStore((state) => state.startTask);
-    const checkAndNotify = useNotificationStore((state) => state.checkAndNotify);
+    const habits = useHabitStore((state) => state.habits);
+    const { checkAndNotify, checkScheduledReminders } = useNotificationStore();
 
     // Apply theme to document
     useEffect(() => {
@@ -58,10 +79,14 @@ export default function App() {
     useEffect(() => {
         const interval = setInterval(() => {
             checkAndNotify(tasks);
+            checkScheduledReminders(
+                () => getTodayMITs?.() || [],
+                () => habits.filter(h => h.active)
+            );
         }, 60000); // Check every minute
 
         return () => clearInterval(interval);
-    }, [tasks, checkAndNotify]);
+    }, [tasks, habits, checkAndNotify, checkScheduledReminders, getTodayMITs]);
 
     // Close sidebar on route change (mobile)
     useEffect(() => {
@@ -97,14 +122,28 @@ export default function App() {
                 return <StatsPanel />;
             case 'weekly':
                 return <WeeklyReview />;
-            case 'projects':
-                return <ProjectsView />;
             case 'templates':
                 return <TemplatesView />;
             case 'settings':
                 return <SettingsView />;
+            case 'goals':
+                return <GoalsView />;
+            case 'wheel':
+                return <WheelOfLife />;
+            case 'habits':
+                return <HabitTracker />;
+            case 'insights':
+                return <InsightsView />;
+            case 'achievements':
+                return <AchievementsView />;
+            case 'someday':
+                return <SomedayView />;
+            case 'goal-matrix':
+                return <GoalMatrix />;
+            case 'today':
+                return <TodayView onNavigate={setCurrentView} onStartFocus={handleStartFocus} />;
             default:
-                return <InboxView onOpenQuickAdd={() => setShowQuickAdd(true)} />;
+                return <TodayView onNavigate={setCurrentView} onStartFocus={handleStartFocus} />;
         }
     };
 
@@ -131,6 +170,9 @@ export default function App() {
                 onViewChange={setCurrentView}
                 isOpen={sidebarOpen}
                 onOpenDataManager={() => setShowDataManager(true)}
+                onOpenCheckIn={() => setShowDailyCheckIn(true)}
+                onOpenMIT={() => setShowMIT(true)}
+                onOpenShutdown={() => setShowShutdown(true)}
             />
 
             <main className="main-content">
@@ -169,6 +211,29 @@ export default function App() {
                     onClose={handleCloseFocus}
                 />
             )}
+
+            {/* Onboarding Modal */}
+            {showOnboarding && (
+                <OnboardingModal onClose={() => setShowOnboarding(false)} />
+            )}
+
+            {/* Daily Check-in Modal */}
+            {showDailyCheckIn && (
+                <DailyCheckIn onClose={() => setShowDailyCheckIn(false)} />
+            )}
+
+            {/* Daily MIT Selection */}
+            {showMIT && (
+                <DailyMIT onClose={() => setShowMIT(false)} />
+            )}
+
+            {/* Shutdown Ritual */}
+            {showShutdown && (
+                <ShutdownRitual onClose={() => setShowShutdown(false)} />
+            )}
+
+            {/* Toast Notifications */}
+            <ToastContainer />
 
             <style>{`
         .content-header {

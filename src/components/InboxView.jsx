@@ -1,13 +1,32 @@
 import { useState } from 'react';
-import { Plus, Inbox as InboxIcon, ArrowRight, GripVertical, Trash2 } from 'lucide-react';
+import { Plus, Inbox as InboxIcon, ArrowRight, GripVertical, Trash2, Target } from 'lucide-react';
 import { useTaskStore, STAGES } from '../stores/useTaskStore';
+import { useGoalStore, LIFE_AREAS } from '../stores/useGoalStore';
 
 export default function InboxView({ onOpenQuickAdd }) {
   const tasks = useTaskStore((state) => state.tasks);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const { goals, milestones } = useGoalStore();
 
   // Get inbox tasks
   const inboxTasks = tasks.filter(t => t.stage === STAGES.INBOX);
+
+  // Helper to get goal info for a task
+  const getTaskGoal = (task) => {
+    if (!task.milestoneId && !task.goalId) return null;
+
+    let goalId = task.goalId;
+    if (!goalId && task.milestoneId) {
+      const milestone = milestones.find(m => m.id === task.milestoneId);
+      goalId = milestone?.goalId;
+    }
+
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return null;
+
+    const area = LIFE_AREAS[goal.area];
+    return { goal, area };
+  };
 
   const handleDelete = (taskId, title) => {
     if (confirm(`Xóa task "${title}"?`)) {
@@ -45,35 +64,43 @@ export default function InboxView({ onOpenQuickAdd }) {
           </div>
 
           <div className="inbox-list">
-            {inboxTasks.map((task) => (
-              <div key={task.id} className={`inbox-task priority-${task.priority}`}>
-                <GripVertical size={18} className="drag-handle" />
-                <div className="inbox-task-content">
-                  <span className="inbox-task-title">{task.title}</span>
-                  <div className="inbox-task-meta">
-                    {task.dueDate && (
-                      <span className="inbox-task-due">📅 {task.dueDate}</span>
-                    )}
-                    {task.estimatedMinutes && (
-                      <span className="inbox-task-time">⏱ {task.estimatedMinutes}m</span>
-                    )}
-                    {task.tags && task.tags.length > 0 && (
-                      <span className="inbox-task-tags">🏷 {task.tags.join(', ')}</span>
-                    )}
+            {inboxTasks.map((task) => {
+              const taskGoal = getTaskGoal(task);
+              return (
+                <div key={task.id} className={`inbox-task priority-${task.priority}`}>
+                  <GripVertical size={18} className="drag-handle" />
+                  <div className="inbox-task-content">
+                    <span className="inbox-task-title">{task.title}</span>
+                    <div className="inbox-task-meta">
+                      {taskGoal && (
+                        <span className="inbox-task-goal" style={{ '--goal-color': taskGoal.area?.color }}>
+                          <Target size={12} /> {taskGoal.area?.icon} {taskGoal.goal.title}
+                        </span>
+                      )}
+                      {task.dueDate && (
+                        <span className="inbox-task-due">📅 {task.dueDate}</span>
+                      )}
+                      {task.estimatedMinutes && (
+                        <span className="inbox-task-time">⏱ {task.estimatedMinutes}m</span>
+                      )}
+                      {task.tags && task.tags.length > 0 && (
+                        <span className="inbox-task-tags">🏷 {task.tags.join(', ')}</span>
+                      )}
+                    </div>
                   </div>
+                  <span className={`priority-badge priority-${task.priority}`}>
+                    {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'TB' : 'Thấp'}
+                  </span>
+                  <button
+                    className="btn btn-ghost inbox-task-delete"
+                    onClick={() => handleDelete(task.id, task.title)}
+                    title="Xóa task"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-                <span className={`priority-badge priority-${task.priority}`}>
-                  {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'TB' : 'Thấp'}
-                </span>
-                <button
-                  className="btn btn-ghost inbox-task-delete"
-                  onClick={() => handleDelete(task.id, task.title)}
-                  title="Xóa task"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="inbox-next-step">
@@ -218,6 +245,18 @@ export default function InboxView({ onOpenQuickAdd }) {
         .inbox-task-delete:hover {
           color: var(--danger);
           background: var(--danger-bg);
+        }
+
+        .inbox-task-goal {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          background: color-mix(in srgb, var(--goal-color, var(--primary)) 15%, transparent);
+          color: var(--goal-color, var(--primary));
+          border-radius: var(--radius-sm);
+          font-size: 0.75rem;
+          font-weight: 500;
         }
       `}</style>
     </div>

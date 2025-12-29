@@ -1,46 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Inbox, CheckSquare, Grid3X3, Calendar, PlayCircle, BarChart3, Zap, Flame, Database, ArrowRight, FolderOpen, FileText, Settings, CalendarDays } from 'lucide-react';
+import { Inbox, CheckSquare, Grid3X3, Calendar, PlayCircle, Zap, Flame, Database, ArrowRight, FolderOpen, FileText, Settings, CalendarDays, Target, PieChart, Repeat, Smile, Cloud, Moon, Star, Edit2, Plus, X, Trash2, RefreshCw } from 'lucide-react';
 import { useTaskStore, STAGES } from '../stores/useTaskStore';
-import { useStatsStore, getLevelInfo } from '../stores/useStatsStore';
-
-// Wisdom quotes from Lao Tzu and Buddha
-const QUOTES = [
-  { text: "Hành trình ngàn dặm bắt đầu từ một bước chân.", author: "Lão Tử" },
-  { text: "Biết người là khôn, biết mình là sáng.", author: "Lão Tử" },
-  { text: "Nước mềm mại nhưng có thể xuyên đá.", author: "Lão Tử" },
-  { text: "Đừng cưỡng cầu, hãy để mọi thứ tự nhiên.", author: "Lão Tử" },
-  { text: "Kẻ chiến thắng người khác là mạnh, tự thắng mình mới là cường.", author: "Lão Tử" },
-  { text: "Im lặng là nguồn sức mạnh vĩ đại.", author: "Lão Tử" },
-  { text: "Tâm an, vạn sự an.", author: "Đức Phật" },
-  { text: "Giọt nước có thể xuyên đá, không phải vì sức mạnh mà vì sự kiên trì.", author: "Đức Phật" },
-  { text: "Quá khứ không truy, tương lai không đợi, an trú trong hiện tại.", author: "Đức Phật" },
-  { text: "Hạnh phúc không phải là điều có sẵn, nó đến từ hành động của bạn.", author: "Đức Phật" },
-  { text: "Người tức giận bạn không thể làm hại bạn, chính cơn giận của bạn mới hại bạn.", author: "Đức Phật" },
-  { text: "Mỗi buổi sáng là một cơ hội mới. Đừng lãng phí nó.", author: "Đức Phật" },
-];
+import { useStatsStore } from '../stores/useStatsStore';
+import { useQuoteStore } from '../stores/useQuoteStore';
 
 const OWNER_NAME = "Trần Quang Triều";
 
-export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataManager }) {
+export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataManager, onOpenCheckIn, onOpenMIT, onOpenShutdown }) {
   const tasks = useTaskStore((state) => state.tasks);
-  const { totalXP, currentStreak } = useStatsStore();
+  const { currentStreak } = useStatsStore();
+  const { quotes, getTodayQuote, getRandomQuote, addQuote, updateQuote, deleteQuote } = useQuoteStore();
 
-  // Random quote that changes daily
-  const [quote, setQuote] = useState(QUOTES[0]);
+  // Quote state
+  const [quote, setQuote] = useState(null);
+  const [showQuoteManager, setShowQuoteManager] = useState(false);
+  const [editingQuote, setEditingQuote] = useState(null);
+  const [newQuote, setNewQuote] = useState({ text: '', author: '' });
 
   useEffect(() => {
-    const today = new Date().toDateString();
-    const savedDate = localStorage.getItem('workflow-quote-date');
-    const savedIndex = localStorage.getItem('workflow-quote-index');
-
-    if (savedDate === today && savedIndex) {
-      setQuote(QUOTES[parseInt(savedIndex)]);
-    } else {
-      const randomIndex = Math.floor(Math.random() * QUOTES.length);
-      setQuote(QUOTES[randomIndex]);
-      localStorage.setItem('workflow-quote-date', today);
-      localStorage.setItem('workflow-quote-index', randomIndex.toString());
-    }
+    setQuote(getTodayQuote());
   }, []);
 
   // Get greeting based on time
@@ -58,23 +36,25 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
   const inProgressCount = tasks.filter(t => t.stage === STAGES.IN_PROGRESS).length;
   const doneCount = tasks.filter(t => t.stage === STAGES.DONE).length;
 
-  const levelInfo = getLevelInfo(totalXP);
-
   // Pipeline navigation - tasks flow through these stages
   const pipelineItems = [
+    { id: 'today', label: '🏠 Hôm nay', icon: Zap, count: null },
     { id: 'inbox', label: 'Inbox', icon: Inbox, count: inboxCount },
     { id: 'matrix', label: 'Phân loại', icon: Grid3X3, count: prioritizedCount },
     { id: 'schedule', label: 'Lên lịch', icon: Calendar, count: scheduledCount },
     { id: 'focus', label: 'Focus Queue', icon: PlayCircle, count: scheduledCount + inProgressCount },
-    { id: 'done', label: 'Hoàn thành', icon: CheckSquare, count: doneCount },
+    { id: 'done', label: 'Hoàn thành', icon: CheckSquare, count: null },
   ];
 
   // Extra features
   const extraItems = [
+    { id: 'goals', label: 'Mục tiêu', icon: Target },
+    { id: 'goal-matrix', label: 'Ma trận ưu tiên', icon: Grid3X3 },
+    { id: 'wheel', label: 'Bánh xe cuộc đời', icon: PieChart },
+    { id: 'habits', label: 'Thói quen', icon: Repeat },
+    { id: 'someday', label: 'Someday/Maybe', icon: Cloud },
     { id: 'weekly', label: 'Tổng kết tuần', icon: CalendarDays },
-    { id: 'projects', label: 'Dự án', icon: FolderOpen },
     { id: 'templates', label: 'Templates', icon: FileText },
-    { id: 'stats', label: 'Thống kê', icon: BarChart3 },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
   ];
 
@@ -92,30 +72,123 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
       </div>
 
       {/* Daily Quote */}
-      <div className="daily-quote">
-        <p className="quote-text">"{quote.text}"</p>
-        <p className="quote-author">— {quote.author}</p>
-      </div>
-
-      {/* XP & Level Display */}
-      <div className="sidebar-xp">
-        <div className="xp-level">
-          <div className="xp-level-badge">{levelInfo.level}</div>
-          <div className="xp-info">
-            <span className="xp-label">Level {levelInfo.level}</span>
-            <span className="xp-value">{totalXP} XP</span>
+      {quote && (
+        <div className="daily-quote">
+          <p className="quote-text">"{quote.text}"</p>
+          <div className="quote-footer">
+            <p className="quote-author">— {quote.author}</p>
+            <div className="quote-actions">
+              <button onClick={() => setQuote(getRandomQuote())} title="Quote khác" className="quote-btn">
+                <RefreshCw size={12} />
+              </button>
+              <button onClick={() => setShowQuoteManager(true)} title="Quản lý quotes" className="quote-btn">
+                <Edit2 size={12} />
+              </button>
+            </div>
           </div>
         </div>
-        <div className="xp-bar">
-          <div
-            className="xp-bar-fill"
-            style={{ width: `${levelInfo.progress * 100}%` }}
-          />
+      )}
+
+      {/* Quote Manager Modal */}
+      {showQuoteManager && (
+        <div className="quote-manager-overlay" onClick={() => setShowQuoteManager(false)}>
+          <div className="quote-manager" onClick={e => e.stopPropagation()}>
+            <div className="qm-header">
+              <h3>📜 Quản lý Quotes</h3>
+              <button onClick={() => setShowQuoteManager(false)} className="btn btn-ghost">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Add New Quote */}
+            <div className="qm-add">
+              <input
+                type="text"
+                placeholder="Nội dung quote..."
+                value={newQuote.text}
+                onChange={(e) => setNewQuote({ ...newQuote, text: e.target.value })}
+              />
+              <input
+                type="text"
+                placeholder="Tác giả"
+                value={newQuote.author}
+                onChange={(e) => setNewQuote({ ...newQuote, author: e.target.value })}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  if (newQuote.text.trim()) {
+                    addQuote(newQuote);
+                    setNewQuote({ text: '', author: '' });
+                  }
+                }}
+              >
+                <Plus size={16} /> Thêm
+              </button>
+            </div>
+
+            {/* Quote List */}
+            <div className="qm-list">
+              {quotes.map((q) => (
+                <div key={q.id} className="qm-item">
+                  {editingQuote?.id === q.id ? (
+                    <div className="qm-edit-form">
+                      <input
+                        type="text"
+                        value={editingQuote.text}
+                        onChange={(e) => setEditingQuote({ ...editingQuote, text: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        value={editingQuote.author}
+                        onChange={(e) => setEditingQuote({ ...editingQuote, author: e.target.value })}
+                      />
+                      <div className="qm-edit-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            updateQuote(q.id, editingQuote);
+                            setEditingQuote(null);
+                          }}
+                        >
+                          Lưu
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => setEditingQuote(null)}
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="qm-content">
+                        <p className="qm-text">"{q.text}"</p>
+                        <p className="qm-author">— {q.author}</p>
+                      </div>
+                      <div className="qm-actions">
+                        <button onClick={() => setEditingQuote({ ...q })} className="btn btn-ghost btn-sm">
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (quotes.length > 1) deleteQuote(q.id);
+                            else alert('Phải có ít nhất 1 quote!');
+                          }}
+                          className="btn btn-ghost btn-sm danger"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="xp-next">
-          {levelInfo.xpNeeded} XP đến level tiếp theo
-        </div>
-      </div>
+      )}
 
       {/* Streak Display */}
       {currentStreak > 0 && (
@@ -163,6 +236,27 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
 
         {/* Data Manager */}
         <div className="nav-divider" />
+        <button
+          className="nav-item checkin-btn"
+          onClick={onOpenCheckIn}
+        >
+          <Smile size={20} />
+          <span>Check-in hôm nay</span>
+        </button>
+        <button
+          className="nav-item mit-btn"
+          onClick={onOpenMIT}
+        >
+          <Star size={20} />
+          <span>3 MIT hôm nay</span>
+        </button>
+        <button
+          className="nav-item shutdown-btn"
+          onClick={onOpenShutdown}
+        >
+          <Moon size={20} />
+          <span>Shutdown Ritual</span>
+        </button>
         <button
           className="nav-item"
           onClick={onOpenDataManager}
@@ -339,8 +433,104 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
         .quote-author {
           font-size: 0.7rem;
           color: var(--text-muted);
-          text-align: right;
         }
+
+        .quote-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .quote-actions { display: flex; gap: 4px; }
+        .quote-btn {
+          padding: 4px;
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          border-radius: var(--radius-sm);
+        }
+        .quote-btn:hover { background: var(--bg-surface); color: var(--primary); }
+
+        /* Quote Manager Modal */
+        .quote-manager-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .quote-manager {
+          background: var(--bg-surface);
+          border-radius: var(--radius-xl);
+          padding: var(--spacing-lg);
+          width: 90%;
+          max-width: 500px;
+          max-height: 80vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .qm-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: var(--spacing-md);
+        }
+
+        .qm-add {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-xs);
+          margin-bottom: var(--spacing-md);
+          padding-bottom: var(--spacing-md);
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        .qm-add input {
+          padding: var(--spacing-sm);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          background: var(--bg-secondary);
+          color: var(--text-primary);
+        }
+
+        .qm-list {
+          overflow-y: auto;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-sm);
+        }
+
+        .qm-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding: var(--spacing-sm);
+          background: var(--bg-secondary);
+          border-radius: var(--radius-md);
+        }
+
+        .qm-content { flex: 1; }
+        .qm-text { font-size: 0.85rem; color: var(--text-primary); margin-bottom: 2px; }
+        .qm-author { font-size: 0.75rem; color: var(--text-muted); }
+        .qm-actions { display: flex; gap: 4px; }
+        .qm-actions .danger:hover { color: var(--danger); }
+
+        .qm-edit-form { display: flex; flex-direction: column; gap: var(--spacing-xs); width: 100%; }
+        .qm-edit-form input {
+          padding: var(--spacing-xs);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          background: var(--bg-surface);
+          color: var(--text-primary);
+        }
+        .qm-edit-actions { display: flex; gap: var(--spacing-xs); }
       `}</style>
     </aside>
   );
