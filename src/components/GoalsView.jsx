@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Plus, ChevronDown, ChevronRight, Edit2, Trash2, X, Target, Flag, CheckCircle, Wand2 } from 'lucide-react';
 import { useGoalStore, LIFE_AREAS } from '../stores/useGoalStore';
 import { useTaskStore, STAGES } from '../stores/useTaskStore';
+
 import GoalWizard from './GoalWizard';
 
 export default function GoalsView() {
     const { goals, milestones, addGoal, updateGoal, deleteGoal, addMilestone, updateMilestone, deleteMilestone, getGoalProgress, getMilestonesByGoal } = useGoalStore();
     const tasks = useTaskStore((state) => state.tasks);
+    const completeTask = useTaskStore((state) => state.completeTask);
+
 
     const [showGoalForm, setShowGoalForm] = useState(false);
     const [showWizard, setShowWizard] = useState(false);
@@ -16,6 +19,7 @@ export default function GoalsView() {
     const [timeframeFilter, setTimeframeFilter] = useState('all');
     const [editingGoal, setEditingGoal] = useState(null); // Goal being edited
     const [editingMilestone, setEditingMilestone] = useState(null); // Milestone being edited
+    const [expandedMilestone, setExpandedMilestone] = useState(null); // Milestone showing tasks
     const [goalForm, setGoalForm] = useState({
         title: '', description: '', area: 'personal', deadline: '',
         why: '', identity: '', timeframe: 'medium',
@@ -462,12 +466,20 @@ export default function GoalsView() {
                                                                 </div>
                                                             ) : (
                                                                 <>
-                                                                    <div className="milestone-info">
-                                                                        <span className="milestone-title">{milestone.title}</span>
-                                                                        <span className="milestone-meta">
-                                                                            {mTasks.length} tasks • {mProgress}%
-                                                                            {milestone.deadline && ` • ${milestone.deadline}`}
-                                                                        </span>
+                                                                    <div
+                                                                        className="milestone-info milestone-clickable"
+                                                                        onClick={() => setExpandedMilestone(expandedMilestone === milestone.id ? null : milestone.id)}
+                                                                    >
+                                                                        <div className="milestone-expand-icon">
+                                                                            {expandedMilestone === milestone.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="milestone-title">{milestone.title}</span>
+                                                                            <span className="milestone-meta">
+                                                                                {mTasks.length} tasks • {mProgress}%
+                                                                                {milestone.deadline && ` • ${milestone.deadline}`}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                     <div className="milestone-progress">
                                                                         <div className="progress-bar-sm">
@@ -481,6 +493,41 @@ export default function GoalsView() {
                                                                         <Trash2 size={14} />
                                                                     </button>
                                                                 </>
+                                                            )}
+
+                                                            {/* Task List for Milestone */}
+                                                            {expandedMilestone === milestone.id && mTasks.length > 0 && (
+                                                                <div className="milestone-tasks-list">
+                                                                    {mTasks.map(task => (
+                                                                        <div
+                                                                            key={task.id}
+                                                                            className={`milestone-task-item ${task.stage === STAGES.DONE ? 'completed' : ''}`}
+                                                                        >
+                                                                            <button
+                                                                                className={`task-checkbox ${task.stage === STAGES.DONE ? 'checked' : ''}`}
+                                                                                onClick={() => task.stage !== STAGES.DONE && completeTask(task.id)}
+                                                                                title={task.stage === STAGES.DONE ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+                                                                            >
+                                                                                {task.stage === STAGES.DONE && <CheckCircle size={14} />}
+                                                                            </button>
+                                                                            <span className={`task-name ${task.stage === STAGES.DONE ? 'done' : ''}`}>
+                                                                                {task.title}
+                                                                            </span>
+                                                                            <span className={`task-stage-badge ${task.stage}`}>
+                                                                                {task.stage === STAGES.DONE ? '✓' :
+                                                                                    task.stage === STAGES.IN_PROGRESS ? '🔄' :
+                                                                                        task.stage === STAGES.SCHEDULED ? '📅' :
+                                                                                            task.stage === STAGES.PRIORITIZED ? '⭐' : '📥'}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {expandedMilestone === milestone.id && mTasks.length === 0 && (
+                                                                <div className="milestone-tasks-empty">
+                                                                    Chưa có task nào. Liên kết task với cột mốc này từ màn hình Inbox!
+                                                                </div>
                                                             )}
                                                         </div>
                                                     );
@@ -922,6 +969,128 @@ export default function GoalsView() {
         .edit-actions {
           display: flex;
           gap: var(--spacing-sm);
+        }
+
+        /* Milestone Task List Styles */
+        .milestone-item {
+          flex-wrap: wrap;
+        }
+        
+        .milestone-clickable {
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          flex: 1;
+          padding: var(--spacing-xs);
+          border-radius: var(--radius-sm);
+          transition: background var(--transition-fast);
+        }
+        
+        .milestone-clickable:hover {
+          background: var(--bg-secondary);
+        }
+        
+        .milestone-expand-icon {
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+        }
+        
+        .milestone-tasks-list {
+          width: 100%;
+          margin-top: var(--spacing-sm);
+          padding: var(--spacing-sm);
+          background: var(--bg-secondary);
+          border-radius: var(--radius-md);
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-xs);
+        }
+        
+        .milestone-task-item {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          padding: var(--spacing-sm);
+          background: var(--bg-surface);
+          border-radius: var(--radius-sm);
+          border-left: 3px solid var(--primary);
+          transition: all var(--transition-fast);
+        }
+        
+        .milestone-task-item:hover {
+          transform: translateX(4px);
+        }
+        
+        .milestone-task-item.completed {
+          border-left-color: var(--success);
+          opacity: 0.7;
+        }
+        
+        .milestone-task-item .task-checkbox {
+          width: 20px;
+          height: 20px;
+          border: 2px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          background: var(--bg-surface);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all var(--transition-fast);
+          flex-shrink: 0;
+        }
+        
+        .milestone-task-item .task-checkbox:hover {
+          border-color: var(--primary);
+          background: var(--primary-glow);
+        }
+        
+        .milestone-task-item .task-checkbox.checked {
+          background: var(--success);
+          border-color: var(--success);
+          color: white;
+        }
+        
+        .task-name {
+          flex: 1;
+          font-size: 0.85rem;
+          color: var(--text-primary);
+        }
+        
+        .task-name.done {
+          text-decoration: line-through;
+          color: var(--text-muted);
+        }
+        
+        .task-stage-badge {
+          font-size: 0.7rem;
+          padding: 2px 6px;
+          border-radius: var(--radius-sm);
+          background: var(--bg-secondary);
+        }
+        
+        .task-stage-badge.done {
+          background: rgba(34, 197, 94, 0.15);
+          color: var(--success);
+        }
+        
+        .task-stage-badge.in_progress {
+          background: rgba(59, 130, 246, 0.15);
+          color: #3b82f6;
+        }
+        
+        .milestone-tasks-empty {
+          width: 100%;
+          margin-top: var(--spacing-sm);
+          padding: var(--spacing-md);
+          background: var(--bg-secondary);
+          border-radius: var(--radius-md);
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          text-align: center;
+          font-style: italic;
         }
       `}</style>
         </div>
