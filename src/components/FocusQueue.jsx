@@ -21,18 +21,27 @@ export default function FocusQueue({ onStartFocus }) {
   const scheduledTasks = tasks.filter(t => t.stage === STAGES.SCHEDULED);
   const inProgressTasks = tasks.filter(t => t.stage === STAGES.IN_PROGRESS);
 
-  // Sort by quadrant priority first, then scheduled time
+  // Sort by date first (today -> tomorrow -> future), then by time, then by quadrant
   const sortedScheduled = [...scheduledTasks].sort((a, b) => {
-    // First sort by quadrant priority
-    const quadrantA = QUADRANT_PRIORITY[a.quadrant] ?? 99;
-    const quadrantB = QUADRANT_PRIORITY[b.quadrant] ?? 99;
-    if (quadrantA !== quadrantB) return quadrantA - quadrantB;
+    // First sort by scheduled date (chronologically)
+    const dateA = a.scheduledFor ? new Date(a.scheduledFor).getTime() : Infinity;
+    const dateB = b.scheduledFor ? new Date(b.scheduledFor).getTime() : Infinity;
+    if (dateA !== dateB) return dateA - dateB;
 
     // Then by scheduled time
-    if (!a.scheduledTime && !b.scheduledTime) return 0;
-    if (!a.scheduledTime) return 1;
-    if (!b.scheduledTime) return -1;
-    return a.scheduledTime.localeCompare(b.scheduledTime);
+    if (a.scheduledTime && b.scheduledTime) {
+      const timeCompare = a.scheduledTime.localeCompare(b.scheduledTime);
+      if (timeCompare !== 0) return timeCompare;
+    } else if (a.scheduledTime && !b.scheduledTime) {
+      return -1;
+    } else if (!a.scheduledTime && b.scheduledTime) {
+      return 1;
+    }
+
+    // Finally by quadrant priority
+    const quadrantA = QUADRANT_PRIORITY[a.quadrant] ?? 99;
+    const quadrantB = QUADRANT_PRIORITY[b.quadrant] ?? 99;
+    return quadrantA - quadrantB;
   });
 
   // Group tasks by quadrant for display
