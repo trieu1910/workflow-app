@@ -52,6 +52,7 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
     { id: 'goal-matrix', label: 'Ma trận ưu tiên', icon: Grid3X3 },
     { id: 'wheel', label: 'Bánh xe cuộc đời', icon: PieChart },
     { id: 'habits', label: 'Thói quen', icon: Repeat },
+    { id: 'reflection', label: 'Nhật ký phản tư', icon: FolderOpen },
     { id: 'someday', label: 'Someday/Maybe', icon: Cloud },
     { id: 'weekly', label: 'Tổng kết tuần', icon: CalendarDays },
     { id: 'templates', label: 'Templates', icon: FileText },

@@ -124,6 +124,14 @@ export const useStatsStore = create(
                     focusTimeToday: state.focusTimeToday + seconds,
                     weeklyData,
                 });
+
+                // Update weekly challenge progress for focus time
+                try {
+                    const { useChallengeStore } = require('./useChallengeStore');
+                    useChallengeStore.getState().updateProgress('focus_time', seconds);
+                } catch (e) {
+                    console.log('Challenge store not available');
+                }
             },
 
             resetDailyStats: () => {

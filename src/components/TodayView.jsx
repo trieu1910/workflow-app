@@ -62,6 +62,24 @@ export default function TodayView({ onNavigate, onStartFocus }) {
     const scheduledToday = tasks.filter(t => t.scheduledFor === today && !t.completed)
         .sort((a, b) => (a.scheduledTime || '23:59').localeCompare(b.scheduledTime || '23:59'));
 
+    // Week time remaining
+    const weekTimeRemaining = useMemo(() => {
+        const now = new Date();
+        const day = now.getDay();
+        const daysUntilSunday = day === 0 ? 0 : 7 - day;
+
+        // End of Sunday (23:59:59)
+        const endOfWeek = new Date(now);
+        endOfWeek.setDate(now.getDate() + daysUntilSunday);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        const diff = endOfWeek - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        return { days, hours, percent: Math.round(((7 - daysUntilSunday) / 7) * 100) };
+    }, [today]);
+
     return (
         <div className="today-view">
             {/* Header / Command Bar */}
@@ -71,6 +89,11 @@ export default function TodayView({ onNavigate, onStartFocus }) {
                     <p className="greeting-text">Sẵn sàng bứt phá hôm nay chưa?</p>
                 </div>
                 <div className="quick-stats">
+                    <div className="stat-pill week-timer" title="Thời gian còn lại trong tuần">
+                        <Calendar size={16} className="text-purple-500" />
+                        <span>{weekTimeRemaining.days}d {weekTimeRemaining.hours}h</span>
+                        <div className="week-progress-mini" style={{ '--week-percent': `${weekTimeRemaining.percent}%` }} />
+                    </div>
                     <div className="stat-pill" title="Streak">
                         <Flame size={16} className="text-orange-500" />
                         <span>{currentStreak} ngày</span>
@@ -226,6 +249,22 @@ export default function TodayView({ onNavigate, onStartFocus }) {
                     display: flex; align-items: center; gap: 8px;
                     padding: 8px 16px; background: var(--bg-secondary);
                     border-radius: 20px; font-weight: 500; font-size: 0.9rem;
+                    position: relative; overflow: hidden;
+                }
+                
+                .stat-pill.week-timer {
+                    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(168, 85, 247, 0.1));
+                    border: 1px solid rgba(139, 92, 246, 0.3);
+                }
+                
+                .week-progress-mini {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    height: 3px;
+                    width: var(--week-percent, 50%);
+                    background: linear-gradient(90deg, #8b5cf6, #a855f7);
+                    border-radius: 0 3px 3px 0;
                 }
 
                 .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-lg); }

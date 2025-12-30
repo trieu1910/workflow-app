@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, ChevronDown, ChevronRight, Edit2, Trash2, X, Target, Flag, CheckCircle, Wand2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Edit2, Trash2, X, Target, Flag, CheckCircle, Wand2, List, Clock } from 'lucide-react';
 import { useGoalStore, LIFE_AREAS } from '../stores/useGoalStore';
 import { useTaskStore, STAGES } from '../stores/useTaskStore';
 
 import GoalWizard from './GoalWizard';
+import GoalTimeline from './GoalTimeline';
 
 export default function GoalsView() {
     const { goals, milestones, addGoal, updateGoal, deleteGoal, addMilestone, updateMilestone, deleteMilestone, getGoalProgress, getMilestonesByGoal } = useGoalStore();
@@ -20,6 +21,7 @@ export default function GoalsView() {
     const [editingGoal, setEditingGoal] = useState(null); // Goal being edited
     const [editingMilestone, setEditingMilestone] = useState(null); // Milestone being edited
     const [expandedMilestone, setExpandedMilestone] = useState(null); // Milestone showing tasks
+    const [viewMode, setViewMode] = useState('list'); // 'list' or 'timeline'
     const [goalForm, setGoalForm] = useState({
         title: '', description: '', area: 'personal', deadline: '',
         why: '', identity: '', timeframe: 'medium',
@@ -115,6 +117,22 @@ export default function GoalsView() {
                     <p className="page-subtitle">{goals.filter(g => g.status === 'active').length} mục tiêu đang theo đuổi</p>
                 </div>
                 <div className="header-actions">
+                    <div className="view-toggle">
+                        <button
+                            className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                            onClick={() => setViewMode('list')}
+                            title="Danh sách"
+                        >
+                            <List size={16} />
+                        </button>
+                        <button
+                            className={`toggle-btn ${viewMode === 'timeline' ? 'active' : ''}`}
+                            onClick={() => setViewMode('timeline')}
+                            title="Timeline"
+                        >
+                            <Clock size={16} />
+                        </button>
+                    </div>
                     <button className="btn btn-primary" onClick={() => setShowWizard(true)}>
                         <Wand2 size={18} />
                         Wizard tạo mục tiêu
@@ -324,223 +342,231 @@ export default function GoalsView() {
                 </div>
             )}
 
-            {/* Goals List */}
-            <div className="goals-list">
-                {filteredGoals.length === 0 ? (
-                    <div className="empty-state">
-                        <Target size={48} />
-                        <h3>Chưa có mục tiêu nào</h3>
-                        <p>Hãy bắt đầu bằng việc thêm một mục tiêu lớn trong cuộc đời bạn!</p>
-                    </div>
-                ) : (
-                    filteredGoals.map(goal => {
-                        const area = LIFE_AREAS[goal.area];
-                        const progress = getGoalProgressRealtime(goal.id);
-                        const goalMilestones = getMilestonesByGoal(goal.id);
-                        const isExpanded = expandedGoal === goal.id;
+            {/* Goals Content */}
+            {viewMode === 'timeline' ? (
+                <GoalTimeline
+                    goals={goals.filter(g => g.status === 'active')}
+                    milestones={milestones}
+                    tasks={tasks}
+                />
+            ) : (
+                <div className="goals-list">
+                    {filteredGoals.length === 0 ? (
+                        <div className="empty-state">
+                            <Target size={48} />
+                            <h3>Chưa có mục tiêu nào</h3>
+                            <p>Hãy bắt đầu bằng việc thêm một mục tiêu lớn trong cuộc đời bạn!</p>
+                        </div>
+                    ) : (
+                        filteredGoals.map(goal => {
+                            const area = LIFE_AREAS[goal.area];
+                            const progress = getGoalProgressRealtime(goal.id);
+                            const goalMilestones = getMilestonesByGoal(goal.id);
+                            const isExpanded = expandedGoal === goal.id;
 
-                        return (
-                            <div key={goal.id} className="goal-card" style={{ '--area-color': area?.color || '#6366f1' }}>
-                                <div className="goal-header" onClick={() => setExpandedGoal(isExpanded ? null : goal.id)}>
-                                    <div className="goal-expand">
-                                        {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                                    </div>
-                                    <span className="goal-icon">{area?.icon}</span>
-                                    <div className="goal-info">
-                                        <h3 className="goal-title">{goal.title}</h3>
-                                        <div className="goal-meta">
-                                            <span className="goal-area">{area?.name}</span>
-                                            {goal.timeframe && (
-                                                <span className={`timeframe-badge ${goal.timeframe}`}>
-                                                    {goal.timeframe === 'short' ? '🚀' : goal.timeframe === 'medium' ? '📅' : '🎯'}
-                                                </span>
-                                            )}
-                                            {goal.smart?.measurable && (
-                                                <span className="smart-badge">📊 {goal.smart.measurable}</span>
-                                            )}
-                                            {goal.deadline && <span>• Đến {goal.deadline}</span>}
-                                            <span>• {goalMilestones.length} cột mốc</span>
+                            return (
+                                <div key={goal.id} className="goal-card" style={{ '--area-color': area?.color || '#6366f1' }}>
+                                    <div className="goal-header" onClick={() => setExpandedGoal(isExpanded ? null : goal.id)}>
+                                        <div className="goal-expand">
+                                            {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                                         </div>
-                                    </div>
-                                    <div className="goal-progress">
-                                        <span className="progress-text">{progress}%</span>
-                                        <div className="progress-bar">
-                                            <div className="progress-fill" style={{ width: `${progress}%` }} />
-                                        </div>
-                                    </div>
-                                    <div className="goal-actions" onClick={(e) => e.stopPropagation()}>
-                                        <button onClick={() => handleEditGoal(goal)} title="Chỉnh sửa"><Edit2 size={16} /></button>
-                                        <button onClick={() => deleteGoal(goal.id)} title="Xóa"><Trash2 size={16} /></button>
-                                    </div>
-                                </div>
-
-                                {/* Show WHY if exists */}
-                                {goal.why && (
-                                    <div className="goal-why">
-                                        💡 <em>"{goal.why}"</em>
-                                    </div>
-                                )}
-
-                                {/* Show Identity Statement if exists */}
-                                {goal.identity && (
-                                    <div className="goal-identity">
-                                        🪞 <strong>{goal.identity}</strong>
-                                    </div>
-                                )}
-
-                                {/* Milestones */}
-                                {isExpanded && (
-                                    <div className="milestones-section">
-                                        <div className="milestones-header">
-                                            <h4><Flag size={16} /> Cột mốc</h4>
-                                            <button className="btn btn-ghost btn-sm" onClick={() => setShowMilestoneForm(goal.id)}>
-                                                <Plus size={14} /> Thêm
-                                            </button>
-                                        </div>
-
-                                        {/* Milestone Form */}
-                                        {showMilestoneForm === goal.id && (
-                                            <form className="milestone-form" onSubmit={(e) => handleAddMilestone(e, goal.id)}>
-                                                <input
-                                                    type="text"
-                                                    value={milestoneForm.title}
-                                                    onChange={(e) => setMilestoneForm({ ...milestoneForm, title: e.target.value })}
-                                                    placeholder="VD: Lấy bằng IELTS 7.0"
-                                                    autoFocus
-                                                />
-                                                <input
-                                                    type="date"
-                                                    value={milestoneForm.deadline}
-                                                    onChange={(e) => setMilestoneForm({ ...milestoneForm, deadline: e.target.value })}
-                                                />
-                                                <button type="submit" className="btn btn-primary btn-sm">Thêm</button>
-                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowMilestoneForm(null)}>Hủy</button>
-                                            </form>
-                                        )}
-
-                                        {goalMilestones.length === 0 ? (
-                                            <p className="no-milestones">Chưa có cột mốc. Hãy chia nhỏ mục tiêu thành các bước cụ thể!</p>
-                                        ) : (
-                                            <div className="milestones-list">
-                                                {goalMilestones.map(milestone => {
-                                                    const mProgress = getMilestoneProgress(milestone.id);
-                                                    const mTasks = getTasksForMilestone(milestone.id);
-                                                    const isEditing = editingMilestone?.id === milestone.id;
-
-                                                    return (
-                                                        <div key={milestone.id} className="milestone-item">
-                                                            {isEditing ? (
-                                                                <div className="milestone-edit-form">
-                                                                    <input
-                                                                        type="text"
-                                                                        value={editingMilestone.title}
-                                                                        onChange={(e) => setEditingMilestone({ ...editingMilestone, title: e.target.value })}
-                                                                        placeholder="Tên cột mốc"
-                                                                        autoFocus
-                                                                    />
-                                                                    <input
-                                                                        type="date"
-                                                                        value={editingMilestone.deadline || ''}
-                                                                        onChange={(e) => setEditingMilestone({ ...editingMilestone, deadline: e.target.value })}
-                                                                    />
-                                                                    <div className="edit-actions">
-                                                                        <button
-                                                                            className="btn btn-primary btn-sm"
-                                                                            onClick={() => {
-                                                                                updateMilestone(milestone.id, {
-                                                                                    title: editingMilestone.title,
-                                                                                    deadline: editingMilestone.deadline
-                                                                                });
-                                                                                setEditingMilestone(null);
-                                                                            }}
-                                                                        >
-                                                                            Lưu
-                                                                        </button>
-                                                                        <button
-                                                                            className="btn btn-ghost btn-sm"
-                                                                            onClick={() => setEditingMilestone(null)}
-                                                                        >
-                                                                            Hủy
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <>
-                                                                    <div
-                                                                        className="milestone-info milestone-clickable"
-                                                                        onClick={() => setExpandedMilestone(expandedMilestone === milestone.id ? null : milestone.id)}
-                                                                    >
-                                                                        <div className="milestone-expand-icon">
-                                                                            {expandedMilestone === milestone.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="milestone-title">{milestone.title}</span>
-                                                                            <span className="milestone-meta">
-                                                                                {mTasks.length} tasks • {mProgress}%
-                                                                                {milestone.deadline && ` • ${milestone.deadline}`}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="milestone-progress">
-                                                                        <div className="progress-bar-sm">
-                                                                            <div className="progress-fill" style={{ width: `${mProgress}%` }} />
-                                                                        </div>
-                                                                    </div>
-                                                                    <button className="btn btn-ghost btn-sm" onClick={() => setEditingMilestone({ ...milestone })}>
-                                                                        <Edit2 size={14} />
-                                                                    </button>
-                                                                    <button className="btn btn-ghost btn-sm" onClick={() => deleteMilestone(milestone.id)}>
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </>
-                                                            )}
-
-                                                            {/* Task List for Milestone */}
-                                                            {expandedMilestone === milestone.id && mTasks.length > 0 && (
-                                                                <div className="milestone-tasks-list">
-                                                                    {mTasks.map(task => (
-                                                                        <div
-                                                                            key={task.id}
-                                                                            className={`milestone-task-item ${task.stage === STAGES.DONE ? 'completed' : ''}`}
-                                                                        >
-                                                                            <button
-                                                                                className={`task-checkbox ${task.stage === STAGES.DONE ? 'checked' : ''}`}
-                                                                                onClick={() => task.stage !== STAGES.DONE && completeTask(task.id)}
-                                                                                title={task.stage === STAGES.DONE ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
-                                                                            >
-                                                                                {task.stage === STAGES.DONE && <CheckCircle size={14} />}
-                                                                            </button>
-                                                                            <span className={`task-name ${task.stage === STAGES.DONE ? 'done' : ''}`}>
-                                                                                {task.title}
-                                                                            </span>
-                                                                            <span className={`task-stage-badge ${task.stage}`}>
-                                                                                {task.stage === STAGES.DONE ? '✓' :
-                                                                                    task.stage === STAGES.IN_PROGRESS ? '🔄' :
-                                                                                        task.stage === STAGES.SCHEDULED ? '📅' :
-                                                                                            task.stage === STAGES.PRIORITIZED ? '⭐' : '📥'}
-                                                                            </span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-
-                                                            {expandedMilestone === milestone.id && mTasks.length === 0 && (
-                                                                <div className="milestone-tasks-empty">
-                                                                    Chưa có task nào. Liên kết task với cột mốc này từ màn hình Inbox!
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                                        <span className="goal-icon">{area?.icon}</span>
+                                        <div className="goal-info">
+                                            <h3 className="goal-title">{goal.title}</h3>
+                                            <div className="goal-meta">
+                                                <span className="goal-area">{area?.name}</span>
+                                                {goal.timeframe && (
+                                                    <span className={`timeframe-badge ${goal.timeframe}`}>
+                                                        {goal.timeframe === 'short' ? '🚀' : goal.timeframe === 'medium' ? '📅' : '🎯'}
+                                                    </span>
+                                                )}
+                                                {goal.smart?.measurable && (
+                                                    <span className="smart-badge">📊 {goal.smart.measurable}</span>
+                                                )}
+                                                {goal.deadline && <span>• Đến {goal.deadline}</span>}
+                                                <span>• {goalMilestones.length} cột mốc</span>
                                             </div>
-                                        )}
+                                        </div>
+                                        <div className="goal-progress">
+                                            <span className="progress-text">{progress}%</span>
+                                            <div className="progress-bar">
+                                                <div className="progress-fill" style={{ width: `${progress}%` }} />
+                                            </div>
+                                        </div>
+                                        <div className="goal-actions" onClick={(e) => e.stopPropagation()}>
+                                            <button onClick={() => handleEditGoal(goal)} title="Chỉnh sửa"><Edit2 size={16} /></button>
+                                            <button onClick={() => deleteGoal(goal.id)} title="Xóa"><Trash2 size={16} /></button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
-            </div>
+
+                                    {/* Show WHY if exists */}
+                                    {goal.why && (
+                                        <div className="goal-why">
+                                            💡 <em>"{goal.why}"</em>
+                                        </div>
+                                    )}
+
+                                    {/* Show Identity Statement if exists */}
+                                    {goal.identity && (
+                                        <div className="goal-identity">
+                                            🪞 <strong>{goal.identity}</strong>
+                                        </div>
+                                    )}
+
+                                    {/* Milestones */}
+                                    {isExpanded && (
+                                        <div className="milestones-section">
+                                            <div className="milestones-header">
+                                                <h4><Flag size={16} /> Cột mốc</h4>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => setShowMilestoneForm(goal.id)}>
+                                                    <Plus size={14} /> Thêm
+                                                </button>
+                                            </div>
+
+                                            {/* Milestone Form */}
+                                            {showMilestoneForm === goal.id && (
+                                                <form className="milestone-form" onSubmit={(e) => handleAddMilestone(e, goal.id)}>
+                                                    <input
+                                                        type="text"
+                                                        value={milestoneForm.title}
+                                                        onChange={(e) => setMilestoneForm({ ...milestoneForm, title: e.target.value })}
+                                                        placeholder="VD: Lấy bằng IELTS 7.0"
+                                                        autoFocus
+                                                    />
+                                                    <input
+                                                        type="date"
+                                                        value={milestoneForm.deadline}
+                                                        onChange={(e) => setMilestoneForm({ ...milestoneForm, deadline: e.target.value })}
+                                                    />
+                                                    <button type="submit" className="btn btn-primary btn-sm">Thêm</button>
+                                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowMilestoneForm(null)}>Hủy</button>
+                                                </form>
+                                            )}
+
+                                            {goalMilestones.length === 0 ? (
+                                                <p className="no-milestones">Chưa có cột mốc. Hãy chia nhỏ mục tiêu thành các bước cụ thể!</p>
+                                            ) : (
+                                                <div className="milestones-list">
+                                                    {goalMilestones.map(milestone => {
+                                                        const mProgress = getMilestoneProgress(milestone.id);
+                                                        const mTasks = getTasksForMilestone(milestone.id);
+                                                        const isEditing = editingMilestone?.id === milestone.id;
+
+                                                        return (
+                                                            <div key={milestone.id} className="milestone-item">
+                                                                {isEditing ? (
+                                                                    <div className="milestone-edit-form">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editingMilestone.title}
+                                                                            onChange={(e) => setEditingMilestone({ ...editingMilestone, title: e.target.value })}
+                                                                            placeholder="Tên cột mốc"
+                                                                            autoFocus
+                                                                        />
+                                                                        <input
+                                                                            type="date"
+                                                                            value={editingMilestone.deadline || ''}
+                                                                            onChange={(e) => setEditingMilestone({ ...editingMilestone, deadline: e.target.value })}
+                                                                        />
+                                                                        <div className="edit-actions">
+                                                                            <button
+                                                                                className="btn btn-primary btn-sm"
+                                                                                onClick={() => {
+                                                                                    updateMilestone(milestone.id, {
+                                                                                        title: editingMilestone.title,
+                                                                                        deadline: editingMilestone.deadline
+                                                                                    });
+                                                                                    setEditingMilestone(null);
+                                                                                }}
+                                                                            >
+                                                                                Lưu
+                                                                            </button>
+                                                                            <button
+                                                                                className="btn btn-ghost btn-sm"
+                                                                                onClick={() => setEditingMilestone(null)}
+                                                                            >
+                                                                                Hủy
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        <div
+                                                                            className="milestone-info milestone-clickable"
+                                                                            onClick={() => setExpandedMilestone(expandedMilestone === milestone.id ? null : milestone.id)}
+                                                                        >
+                                                                            <div className="milestone-expand-icon">
+                                                                                {expandedMilestone === milestone.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                                            </div>
+                                                                            <div>
+                                                                                <span className="milestone-title">{milestone.title}</span>
+                                                                                <span className="milestone-meta">
+                                                                                    {mTasks.length} tasks • {mProgress}%
+                                                                                    {milestone.deadline && ` • ${milestone.deadline}`}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="milestone-progress">
+                                                                            <div className="progress-bar-sm">
+                                                                                <div className="progress-fill" style={{ width: `${mProgress}%` }} />
+                                                                            </div>
+                                                                        </div>
+                                                                        <button className="btn btn-ghost btn-sm" onClick={() => setEditingMilestone({ ...milestone })}>
+                                                                            <Edit2 size={14} />
+                                                                        </button>
+                                                                        <button className="btn btn-ghost btn-sm" onClick={() => deleteMilestone(milestone.id)}>
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </>
+                                                                )}
+
+                                                                {/* Task List for Milestone */}
+                                                                {expandedMilestone === milestone.id && mTasks.length > 0 && (
+                                                                    <div className="milestone-tasks-list">
+                                                                        {mTasks.map(task => (
+                                                                            <div
+                                                                                key={task.id}
+                                                                                className={`milestone-task-item ${task.stage === STAGES.DONE ? 'completed' : ''}`}
+                                                                            >
+                                                                                <button
+                                                                                    className={`task-checkbox ${task.stage === STAGES.DONE ? 'checked' : ''}`}
+                                                                                    onClick={() => task.stage !== STAGES.DONE && completeTask(task.id)}
+                                                                                    title={task.stage === STAGES.DONE ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+                                                                                >
+                                                                                    {task.stage === STAGES.DONE && <CheckCircle size={14} />}
+                                                                                </button>
+                                                                                <span className={`task-name ${task.stage === STAGES.DONE ? 'done' : ''}`}>
+                                                                                    {task.title}
+                                                                                </span>
+                                                                                <span className={`task-stage-badge ${task.stage}`}>
+                                                                                    {task.stage === STAGES.DONE ? '✓' :
+                                                                                        task.stage === STAGES.IN_PROGRESS ? '🔄' :
+                                                                                            task.stage === STAGES.SCHEDULED ? '📅' :
+                                                                                                task.stage === STAGES.PRIORITIZED ? '⭐' : '📥'}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {expandedMilestone === milestone.id && mTasks.length === 0 && (
+                                                                    <div className="milestone-tasks-empty">
+                                                                        Chưa có task nào. Liên kết task với cột mốc này từ màn hình Inbox!
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            )}
 
             {/* Edit Goal Modal */}
             {editingGoal && (
@@ -773,6 +799,30 @@ export default function GoalsView() {
         .form-row { display: flex; gap: var(--spacing-md); }
         .form-row .form-group { flex: 1; }
         .form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-lg); }
+        
+        .view-toggle {
+          display: flex;
+          background: var(--bg-secondary);
+          border-radius: var(--radius-md);
+          padding: 2px;
+        }
+        
+        .toggle-btn {
+          padding: var(--spacing-xs) var(--spacing-sm);
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          border-radius: var(--radius-sm);
+          transition: all var(--transition-fast);
+        }
+        
+        .toggle-btn:hover { color: var(--text-primary); }
+        .toggle-btn.active {
+          background: var(--bg-surface);
+          color: var(--primary);
+          box-shadow: var(--shadow-sm);
+        }
         
         .goals-list { display: flex; flex-direction: column; gap: var(--spacing-md); }
         

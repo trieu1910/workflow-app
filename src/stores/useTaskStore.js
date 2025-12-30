@@ -345,6 +345,19 @@ export const useTaskStore = create(
                     }
                 }
 
+                // Update weekly challenge progress
+                try {
+                    const { useChallengeStore } = require('./useChallengeStore');
+                    useChallengeStore.getState().updateProgress('tasks_weekly', 1);
+
+                    // Also update high_priority type if task is high priority
+                    if (task.priority === 'high') {
+                        useChallengeStore.getState().updateProgress('high_priority', 1);
+                    }
+                } catch (e) {
+                    console.log('Challenge store not available');
+                }
+
                 return task;
             },
 

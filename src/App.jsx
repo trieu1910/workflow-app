@@ -28,6 +28,8 @@ import SomedayView from './components/SomedayView';
 import GoalMatrix from './components/GoalMatrix';
 import TodayView from './components/TodayView';
 import ToastContainer from './components/ToastContainer';
+import ReflectionView from './components/ReflectionView';
+import EndDayReflection from './components/EndDayReflection';
 import { useTaskStore, STAGES } from './stores/useTaskStore';
 import { useHabitStore } from './stores/useHabitStore';
 import { useNotificationStore } from './stores/useNotificationStore';
@@ -49,6 +51,7 @@ export default function App() {
     const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
     const [showMIT, setShowMIT] = useState(false);
     const [showShutdown, setShowShutdown] = useState(false);
+    const [showReflection, setShowReflection] = useState(false);
 
     const tasks = useTaskStore((state) => state.tasks);
     const getTodayMITs = useTaskStore((state) => state.getTodayMITs);
@@ -140,6 +143,8 @@ export default function App() {
                 return <SomedayView />;
             case 'goal-matrix':
                 return <GoalMatrix />;
+            case 'reflection':
+                return <ReflectionView />;
             case 'today':
                 return <TodayView onNavigate={setCurrentView} onStartFocus={handleStartFocus} />;
             default:

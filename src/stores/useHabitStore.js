@@ -60,6 +60,22 @@ export const useHabitStore = create(
                         },
                     },
                 }));
+
+                // Update challenge progress for habit streaks
+                try {
+                    const { useChallengeStore } = require('./useChallengeStore');
+                    const streak = get().getStreak(habitId);
+                    useChallengeStore.getState().setProgress('habit_streak', streak);
+
+                    // Check if all habits are checked in today
+                    const habits = get().habits.filter(h => h.active);
+                    const allCheckedToday = habits.every(h => get().isCheckedIn(h.id, dateStr));
+                    if (allCheckedToday && habits.length > 0) {
+                        useChallengeStore.getState().updateProgress('all_habits_day', 1);
+                    }
+                } catch (e) {
+                    console.log('Challenge store not available');
+                }
             },
 
             uncheckIn: (habitId, date = null) => {
