@@ -15,7 +15,25 @@ export const useNotificationStore = create(
                 mitReminder: { enabled: true, time: '15:00' },
                 shutdownRitual: { enabled: true, time: '18:00' },
                 morningHabits: { enabled: true, time: '07:00' },
+                // NEW - Sleep Reminder
+                sleepReminder: {
+                    enabled: true,
+                    time: '22:00',
+                    message: 'Đến giờ đi ngủ rồi! Nghỉ ngơi để có sức khỏe tốt 😴'
+                },
             },
+
+            // NEW - Break reminder settings (interval-based)
+            breakReminder: {
+                enabled: true,
+                intervalMinutes: 45,  // Nhắc mỗi 45 phút
+                showExercises: true,  // Hiển thị bài tập
+                lastBreakTime: null,  // Timestamp lần nghỉ cuối
+            },
+
+            // State for break modal
+            showBreakModal: false,
+
             lastShownDates: {},
 
             // In-app toasts
@@ -38,6 +56,65 @@ export const useNotificationStore = create(
                     ...state.scheduledReminders,
                     [key]: { ...state.scheduledReminders[key], ...updates },
                 },
+            })),
+
+            // NEW - Update break reminder settings
+            updateBreakReminder: (updates) => set((state) => ({
+                breakReminder: { ...state.breakReminder, ...updates },
+            })),
+
+            // NEW - Show/hide break modal
+            setShowBreakModal: (show) => set({ showBreakModal: show }),
+
+            // NEW - Record break taken
+            recordBreakTaken: () => set((state) => ({
+                breakReminder: { ...state.breakReminder, lastBreakTime: Date.now() },
+                showBreakModal: false,
+            })),
+
+            // NEW - Check if break reminder should show
+            checkBreakReminder: () => {
+                const { breakReminder, enabled } = get();
+                if (!breakReminder.enabled) return false;
+
+                const now = Date.now();
+                const intervalMs = breakReminder.intervalMinutes * 60 * 1000;
+                const lastBreak = breakReminder.lastBreakTime || (now - intervalMs - 1);
+
+                if (now - lastBreak >= intervalMs) {
+                    // Time for a break!
+                    get().addToast({
+                        type: 'break',
+                        title: '🧘 Nghỉ ngơi thôi!',
+                        message: `Bạn đã làm việc ${breakReminder.intervalMinutes} phút rồi`,
+                        duration: 15000,
+                    });
+
+                    if (enabled) {
+                        get().sendNotification('🧘 Nghỉ ngơi thôi!', {
+                            body: 'Đứng dậy vươn vai và nghỉ ngơi 5 phút',
+                        });
+                    }
+
+                    // Show break modal if exercises enabled
+                    if (breakReminder.showExercises) {
+                        set({ showBreakModal: true });
+                    } else {
+                        // Just record the break without modal
+                        get().recordBreakTaken();
+                    }
+                    return true;
+                }
+                return false;
+            },
+
+            // NEW - Skip break (snooze for 10 min)
+            skipBreak: () => set((state) => ({
+                breakReminder: {
+                    ...state.breakReminder,
+                    lastBreakTime: Date.now() - (state.breakReminder.intervalMinutes - 10) * 60 * 1000
+                },
+                showBreakModal: false,
             })),
 
             sendNotification: (title, options = {}) => {
@@ -116,8 +193,8 @@ export const useNotificationStore = create(
                 const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                 const { scheduledReminders, enabled } = get();
 
-                // MIT Reminder (3pm)
-                if (scheduledReminders.mitReminder.enabled && currentTime === scheduledReminders.mitReminder.time) {
+                // MIT Reminder
+                if (scheduledReminders.mitReminder?.enabled && currentTime === scheduledReminders.mitReminder.time) {
                     if (get().shouldShowReminder('mit')) {
                         const mits = getMITs?.() || [];
                         const pending = mits.filter(t => !t.completed);
@@ -134,8 +211,8 @@ export const useNotificationStore = create(
                     }
                 }
 
-                // Shutdown Ritual (6pm)
-                if (scheduledReminders.shutdownRitual.enabled && currentTime === scheduledReminders.shutdownRitual.time) {
+                // Shutdown Ritual
+                if (scheduledReminders.shutdownRitual?.enabled && currentTime === scheduledReminders.shutdownRitual.time) {
                     if (get().shouldShowReminder('shutdown')) {
                         get().addToast({
                             type: 'reminder',
@@ -148,8 +225,8 @@ export const useNotificationStore = create(
                     }
                 }
 
-                // Morning Habits (7am)
-                if (scheduledReminders.morningHabits.enabled && currentTime === scheduledReminders.morningHabits.time) {
+                // Morning Habits
+                if (scheduledReminders.morningHabits?.enabled && currentTime === scheduledReminders.morningHabits.time) {
                     if (get().shouldShowReminder('morning')) {
                         const habits = getHabits?.() || [];
                         if (habits.length > 0) {
@@ -164,6 +241,24 @@ export const useNotificationStore = create(
                         }
                     }
                 }
+
+                // NEW - Sleep Reminder
+                if (scheduledReminders.sleepReminder?.enabled && currentTime === scheduledReminders.sleepReminder.time) {
+                    if (get().shouldShowReminder('sleep')) {
+                        get().addToast({
+                            type: 'reminder',
+                            title: '😴 Đến giờ đi ngủ!',
+                            message: scheduledReminders.sleepReminder.message || 'Nghỉ ngơi để có sức khỏe tốt!',
+                            duration: 15000,
+                        });
+                        if (enabled) {
+                            get().sendNotification('😴 Đến giờ đi ngủ!', {
+                                body: scheduledReminders.sleepReminder.message || 'Nghỉ ngơi để có sức khỏe tốt!'
+                            });
+                        }
+                        get().markReminderShown('sleep');
+                    }
+                }
             },
         }),
         {
@@ -173,8 +268,10 @@ export const useNotificationStore = create(
                 reminderMinutes: state.reminderMinutes,
                 soundEnabled: state.soundEnabled,
                 scheduledReminders: state.scheduledReminders,
+                breakReminder: state.breakReminder,
                 lastShownDates: state.lastShownDates,
             }),
         }
     )
 );
+

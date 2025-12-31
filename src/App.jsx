@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Menu, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import InboxView from './components/InboxView';
@@ -7,14 +7,9 @@ import ScheduleView from './components/ScheduleView';
 import FocusQueue from './components/FocusQueue';
 import DoneView from './components/DoneView';
 import StatsPanel from './components/StatsPanel';
-import WeeklyReview from './components/WeeklyReview';
 import TemplatesView from './components/TemplatesView';
 import SettingsView from './components/SettingsView';
-import GoalsView from './components/GoalsView';
-import WheelOfLife from './components/WheelOfLife';
 import HabitTracker from './components/HabitTracker';
-import InsightsView from './components/InsightsView';
-import AchievementsView from './components/AchievementsView';
 import FocusMode from './components/FocusMode';
 import QuickAdd from './components/QuickAdd';
 import ThemeToggle from './components/ThemeToggle';
@@ -25,14 +20,33 @@ import DailyCheckIn from './components/DailyCheckIn';
 import DailyMIT from './components/DailyMIT';
 import ShutdownRitual from './components/ShutdownRitual';
 import SomedayView from './components/SomedayView';
-import GoalMatrix from './components/GoalMatrix';
 import TodayView from './components/TodayView';
 import ToastContainer from './components/ToastContainer';
-import ReflectionView from './components/ReflectionView';
-import EndDayReflection from './components/EndDayReflection';
 import { useTaskStore, STAGES } from './stores/useTaskStore';
 import { useHabitStore } from './stores/useHabitStore';
 import { useNotificationStore } from './stores/useNotificationStore';
+import BreakReminder from './components/BreakReminder';
+
+// Lazy loading cho các views lớn/ít dùng - giảm initial bundle size
+const GoalsView = lazy(() => import('./components/GoalsView'));
+const WeeklyReview = lazy(() => import('./components/WeeklyReview'));
+const WheelOfLife = lazy(() => import('./components/WheelOfLife'));
+const ReflectionView = lazy(() => import('./components/ReflectionView'));
+const GoalMatrix = lazy(() => import('./components/GoalMatrix'));
+const EndDayReflection = lazy(() => import('./components/EndDayReflection'));
+
+// Loading fallback component
+const LoadingFallback = () => (
+    <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '200px',
+        color: 'var(--text-muted)'
+    }}>
+        <span>Đang tải...</span>
+    </div>
+);
 
 export default function App() {
     const [currentView, setCurrentView] = useState('inbox');
@@ -57,7 +71,7 @@ export default function App() {
     const getTodayMITs = useTaskStore((state) => state.getTodayMITs);
     const startTask = useTaskStore((state) => state.startTask);
     const habits = useHabitStore((state) => state.habits);
-    const { checkAndNotify, checkScheduledReminders } = useNotificationStore();
+    const { checkAndNotify, checkScheduledReminders, checkBreakReminder } = useNotificationStore();
 
     // Apply theme to document
     useEffect(() => {
@@ -80,16 +94,20 @@ export default function App() {
 
     // Notification check interval
     useEffect(() => {
+        // Check immediately on mount
+        checkBreakReminder();
+
         const interval = setInterval(() => {
             checkAndNotify(tasks);
             checkScheduledReminders(
                 () => getTodayMITs?.() || [],
                 () => habits.filter(h => h.active)
             );
+            checkBreakReminder();
         }, 60000); // Check every minute
 
         return () => clearInterval(interval);
-    }, [tasks, habits, checkAndNotify, checkScheduledReminders, getTodayMITs]);
+    }, [tasks, habits, checkAndNotify, checkScheduledReminders, checkBreakReminder, getTodayMITs]);
 
     // Close sidebar on route change (mobile)
     useEffect(() => {
@@ -135,10 +153,6 @@ export default function App() {
                 return <WheelOfLife />;
             case 'habits':
                 return <HabitTracker />;
-            case 'insights':
-                return <InsightsView />;
-            case 'achievements':
-                return <AchievementsView />;
             case 'someday':
                 return <SomedayView />;
             case 'goal-matrix':
@@ -185,7 +199,9 @@ export default function App() {
                     <ThemeToggle theme={theme} onToggle={toggleTheme} />
                 </div>
 
-                {renderContent()}
+                <Suspense fallback={<LoadingFallback />}>
+                    {renderContent()}
+                </Suspense>
             </main>
 
             {/* Quick Add Modal */}
@@ -304,6 +320,9 @@ export default function App() {
           }
         }
       `}</style>
+
+            {/* Break Reminder Modal */}
+            <BreakReminder />
         </div>
     );
 }

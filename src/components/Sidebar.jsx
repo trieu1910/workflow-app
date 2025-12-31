@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Inbox, CheckSquare, Grid3X3, Calendar, PlayCircle, Zap, Flame, Database, ArrowRight, FolderOpen, FileText, Settings, CalendarDays, Target, PieChart, Repeat, Smile, Cloud, Moon, Star, Edit2, Plus, X, Trash2, RefreshCw } from 'lucide-react';
-import { useTaskStore, STAGES } from '../stores/useTaskStore';
+import { useTaskStore, STAGES, selectStageCounts } from '../stores/useTaskStore';
 import { useStatsStore } from '../stores/useStatsStore';
 import { useQuoteStore } from '../stores/useQuoteStore';
+import { useShallow } from 'zustand/react/shallow';
 
 const OWNER_NAME = "Trần Quang Triều";
 
 export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataManager, onOpenCheckIn, onOpenMIT, onOpenShutdown }) {
-  const tasks = useTaskStore((state) => state.tasks);
+  // Sử dụng selector với shallow compare - chỉ re-render khi counts thay đổi
+  const stageCounts = useTaskStore(selectStageCounts, useShallow);
   const { currentStreak } = useStatsStore();
   const { quotes, getTodayQuote, getRandomQuote, addQuote, updateQuote, deleteQuote } = useQuoteStore();
 
@@ -21,20 +23,16 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
     setQuote(getTodayQuote());
   }, []);
 
-  // Get greeting based on time
-  const getGreeting = () => {
+  // Get greeting based on time - memoized vì không phụ thuộc props/state
+  const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Chào buổi sáng';
     if (hour < 18) return 'Chào buổi chiều';
     return 'Chào buổi tối';
-  };
+  }, []);
 
-  // Count by stage
-  const inboxCount = tasks.filter(t => t.stage === STAGES.INBOX).length;
-  const prioritizedCount = tasks.filter(t => t.stage === STAGES.PRIORITIZED).length;
-  const scheduledCount = tasks.filter(t => t.stage === STAGES.SCHEDULED).length;
-  const inProgressCount = tasks.filter(t => t.stage === STAGES.IN_PROGRESS).length;
-  const doneCount = tasks.filter(t => t.stage === STAGES.DONE).length;
+  // Destructure counts từ selector
+  const { inbox: inboxCount, prioritized: prioritizedCount, scheduled: scheduledCount, inProgress: inProgressCount } = stageCounts;
 
   // Pipeline navigation - tasks flow through these stages
   const pipelineItems = [
@@ -68,7 +66,7 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onOpenDataM
 
       {/* Owner Greeting */}
       <div className="owner-greeting">
-        <p className="greeting-text">{getGreeting()},</p>
+        <p className="greeting-text">{greeting},</p>
         <p className="owner-name">{OWNER_NAME} ✨</p>
       </div>
 

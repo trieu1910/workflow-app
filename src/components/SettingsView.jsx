@@ -2,218 +2,330 @@ import { Bell, BellOff, Clock, Volume2, VolumeX, TestTube2 } from 'lucide-react'
 import { useNotificationStore } from '../stores/useNotificationStore';
 
 export default function SettingsView() {
-  const {
-    permission,
-    enabled,
-    reminderMinutes,
-    soundEnabled,
-    scheduledReminders,
-    requestPermission,
-    updateSettings,
-    updateScheduledReminder,
-    addToast,
-    sendNotification,
-  } = useNotificationStore();
+    const {
+        permission,
+        enabled,
+        reminderMinutes,
+        soundEnabled,
+        scheduledReminders,
+        breakReminder,
+        requestPermission,
+        updateSettings,
+        updateScheduledReminder,
+        updateBreakReminder,
+        addToast,
+        sendNotification,
+    } = useNotificationStore();
 
-  const handleToggleNotifications = async () => {
-    if (!enabled) {
-      const granted = await requestPermission();
-      if (!granted) {
-        alert('Bạn cần cho phép thông báo trong trình duyệt');
-      }
-    } else {
-      updateSettings({ enabled: false });
-    }
-  };
+    const breakIntervalOptions = [30, 45, 60, 90, 120];
 
-  const handleTestToast = () => {
-    addToast({
-      type: 'reminder',
-      title: '🧪 Test Toast',
-      message: 'Toast notification hoạt động tốt!',
-      duration: 5000,
-    });
-  };
+    const handleToggleNotifications = async () => {
+        if (!enabled) {
+            const granted = await requestPermission();
+            if (!granted) {
+                alert('Bạn cần cho phép thông báo trong trình duyệt');
+            }
+        } else {
+            updateSettings({ enabled: false });
+        }
+    };
 
-  const handleTestBrowserNotification = () => {
-    if (enabled && permission === 'granted') {
-      sendNotification('🔔 Test Browser Notification', {
-        body: 'Browser notification hoạt động!',
-      });
-    } else {
-      alert('Hãy bật thông báo browser trước (nút "Bật thông báo")');
-    }
-  };
+    const handleTestToast = () => {
+        addToast({
+            type: 'reminder',
+            title: '🧪 Test Toast',
+            message: 'Toast notification hoạt động tốt!',
+            duration: 5000,
+        });
+    };
 
-  const reminderOptions = [5, 10, 15, 30, 60];
+    const handleTestBrowserNotification = () => {
+        if (enabled && permission === 'granted') {
+            sendNotification('🔔 Test Browser Notification', {
+                body: 'Browser notification hoạt động!',
+            });
+        } else {
+            alert('Hãy bật thông báo browser trước (nút "Bật thông báo")');
+        }
+    };
 
-  return (
-    <div className="settings-view">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">⚙️ Cài đặt</h1>
-          <p className="page-subtitle">Tùy chỉnh ứng dụng</p>
-        </div>
-      </div>
+    const reminderOptions = [5, 10, 15, 30, 60];
 
-      {/* Notifications Section */}
-      <div className="settings-section">
-        <h3>🔔 Thông báo</h3>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <span className="setting-label">Bật thông báo browser</span>
-            <span className="setting-description">
-              Nhận nhắc nhở trước khi task đến hạn (cần permission)
-            </span>
-          </div>
-          <button
-            className={`toggle-btn ${enabled ? 'active' : ''}`}
-            onClick={handleToggleNotifications}
-          >
-            {enabled ? <Bell size={18} /> : <BellOff size={18} />}
-            {enabled ? 'Bật' : 'Tắt'}
-          </button>
-        </div>
-
-        {/* Test Buttons */}
-        <div className="setting-item">
-          <div className="setting-info">
-            <span className="setting-label">Test thông báo</span>
-            <span className="setting-description">
-              Kiểm tra Toast (in-app) và Browser notification
-            </span>
-          </div>
-          <div className="test-buttons">
-            <button className="btn btn-secondary" onClick={handleTestToast}>
-              <TestTube2 size={16} /> Toast
-            </button>
-            <button className="btn btn-secondary" onClick={handleTestBrowserNotification}>
-              <Bell size={16} /> Browser
-            </button>
-          </div>
-        </div>
-
-        {/* Scheduled Reminders */}
-        <div className="setting-item">
-          <div className="setting-info">
-            <span className="setting-label">⭐ MIT Reminder</span>
-            <span className="setting-description">
-              Nhắc làm MIT lúc {scheduledReminders?.mitReminder?.time || '15:00'}
-            </span>
-          </div>
-          <input
-            type="time"
-            value={scheduledReminders?.mitReminder?.time || '15:00'}
-            onChange={(e) => updateScheduledReminder('mitReminder', { time: e.target.value })}
-            className="time-input"
-          />
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <span className="setting-label">🌅 Shutdown Ritual</span>
-            <span className="setting-description">
-              Nhắc kết thúc ngày lúc {scheduledReminders?.shutdownRitual?.time || '18:00'}
-            </span>
-          </div>
-          <input
-            type="time"
-            value={scheduledReminders?.shutdownRitual?.time || '18:00'}
-            onChange={(e) => updateScheduledReminder('shutdownRitual', { time: e.target.value })}
-            className="time-input"
-          />
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <span className="setting-label">🌟 Morning Habits</span>
-            <span className="setting-description">
-              Nhắc check habit lúc {scheduledReminders?.morningHabits?.time || '07:00'}
-            </span>
-          </div>
-          <input
-            type="time"
-            value={scheduledReminders?.morningHabits?.time || '07:00'}
-            onChange={(e) => updateScheduledReminder('morningHabits', { time: e.target.value })}
-            className="time-input"
-          />
-        </div>
-
-        {permission === 'denied' && (
-          <div className="warning-banner">
-            ⚠️ Thông báo bị chặn. Vui lòng bật trong cài đặt trình duyệt.
-          </div>
-        )}
-
-        {enabled && (
-          <>
-            <div className="setting-item">
-              <div className="setting-info">
-                <span className="setting-label">Nhắc nhở trước</span>
-                <span className="setting-description">
-                  Thời gian trước deadline để nhắc nhở
-                </span>
-              </div>
-              <div className="reminder-options">
-                {reminderOptions.map((mins) => (
-                  <button
-                    key={mins}
-                    className={`reminder-option ${reminderMinutes === mins ? 'active' : ''}`}
-                    onClick={() => updateSettings({ reminderMinutes: mins })}
-                  >
-                    {mins < 60 ? `${mins}p` : `${mins / 60}h`}
-                  </button>
-                ))}
-              </div>
+    return (
+        <div className="settings-view">
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">⚙️ Cài đặt</h1>
+                    <p className="page-subtitle">Tùy chỉnh ứng dụng</p>
+                </div>
             </div>
 
-            <div className="setting-item">
-              <div className="setting-info">
-                <span className="setting-label">Âm thanh</span>
-                <span className="setting-description">
-                  Phát âm thanh khi có thông báo
-                </span>
-              </div>
-              <button
-                className={`toggle-btn ${soundEnabled ? 'active' : ''}`}
-                onClick={() => updateSettings({ soundEnabled: !soundEnabled })}
-              >
-                {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-                {soundEnabled ? 'Bật' : 'Tắt'}
-              </button>
+            {/* Notifications Section */}
+            <div className="settings-section">
+                <h3>🔔 Thông báo</h3>
+
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <span className="setting-label">Bật thông báo browser</span>
+                        <span className="setting-description">
+                            Nhận nhắc nhở trước khi task đến hạn (cần permission)
+                        </span>
+                    </div>
+                    <button
+                        className={`toggle-btn ${enabled ? 'active' : ''}`}
+                        onClick={handleToggleNotifications}
+                    >
+                        {enabled ? <Bell size={18} /> : <BellOff size={18} />}
+                        {enabled ? 'Bật' : 'Tắt'}
+                    </button>
+                </div>
+
+                {/* Test Buttons */}
+                <div className="setting-item test-section">
+                    <div className="setting-info">
+                        <span className="setting-label">Test thông báo</span>
+                        <span className="setting-description">
+                            Kiểm tra các loại nhắc nhở hoạt động
+                        </span>
+                    </div>
+                    <div className="test-buttons-grid">
+                        <button className="btn btn-secondary btn-sm" onClick={handleTestToast}>
+                            🔔 Toast
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={handleTestBrowserNotification}>
+                            📢 Browser
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                            addToast({ type: 'break', title: '🧘 Nghỉ ngơi thôi!', message: 'Test nhắc nghỉ ngơi', duration: 5000 });
+                            sendNotification('🧘 Nghỉ ngơi thôi!', { body: 'Đứng dậy vươn vai và nghỉ ngơi 5 phút' });
+                            useNotificationStore.getState().setShowBreakModal(true);
+                        }}>
+                            🧘 Nghỉ ngơi
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                            addToast({ type: 'reminder', title: '😴 Đến giờ đi ngủ!', message: 'Test nhắc đi ngủ', duration: 5000 });
+                            sendNotification('😴 Đến giờ đi ngủ!', { body: 'Nghỉ ngơi để có sức khỏe tốt!' });
+                        }}>
+                            😴 Đi ngủ
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                            addToast({ type: 'reminder', title: '⭐ MIT Reminder', message: 'Test nhắc MIT', duration: 5000 });
+                            sendNotification('⭐ MIT Reminder', { body: 'Đừng quên hoàn thành MIT hôm nay!' });
+                        }}>
+                            ⭐ MIT
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                            addToast({ type: 'reminder', title: '🌅 Shutdown Ritual', message: 'Test nhắc kết thúc ngày', duration: 5000 });
+                            sendNotification('🌅 Shutdown Ritual', { body: 'Đến giờ kết thúc ngày làm việc!' });
+                        }}>
+                            🌅 Shutdown
+                        </button>
+                    </div>
+                </div>
+
+                {/* Scheduled Reminders */}
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <span className="setting-label">⭐ MIT Reminder</span>
+                        <span className="setting-description">
+                            Nhắc làm MIT lúc {scheduledReminders?.mitReminder?.time || '15:00'}
+                        </span>
+                    </div>
+                    <input
+                        type="time"
+                        value={scheduledReminders?.mitReminder?.time || '15:00'}
+                        onChange={(e) => updateScheduledReminder('mitReminder', { time: e.target.value })}
+                        className="time-input"
+                    />
+                </div>
+
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <span className="setting-label">🌅 Shutdown Ritual</span>
+                        <span className="setting-description">
+                            Nhắc kết thúc ngày lúc {scheduledReminders?.shutdownRitual?.time || '18:00'}
+                        </span>
+                    </div>
+                    <input
+                        type="time"
+                        value={scheduledReminders?.shutdownRitual?.time || '18:00'}
+                        onChange={(e) => updateScheduledReminder('shutdownRitual', { time: e.target.value })}
+                        className="time-input"
+                    />
+                </div>
+
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <span className="setting-label">🌟 Morning Habits</span>
+                        <span className="setting-description">
+                            Nhắc check habit lúc {scheduledReminders?.morningHabits?.time || '07:00'}
+                        </span>
+                    </div>
+                    <input
+                        type="time"
+                        value={scheduledReminders?.morningHabits?.time || '07:00'}
+                        onChange={(e) => updateScheduledReminder('morningHabits', { time: e.target.value })}
+                        className="time-input"
+                    />
+                </div>
+
+                {/* NEW - Sleep Reminder */}
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <span className="setting-label">😴 Nhắc đi ngủ</span>
+                        <span className="setting-description">
+                            Nhắc đi ngủ lúc {scheduledReminders?.sleepReminder?.time || '22:00'}
+                        </span>
+                    </div>
+                    <div className="setting-controls">
+                        <input
+                            type="time"
+                            value={scheduledReminders?.sleepReminder?.time || '22:00'}
+                            onChange={(e) => updateScheduledReminder('sleepReminder', { time: e.target.value })}
+                            className="time-input"
+                        />
+                        <button
+                            className={`toggle-btn-sm ${scheduledReminders?.sleepReminder?.enabled ? 'active' : ''}`}
+                            onClick={() => updateScheduledReminder('sleepReminder', { enabled: !scheduledReminders?.sleepReminder?.enabled })}
+                        >
+                            {scheduledReminders?.sleepReminder?.enabled ? 'Bật' : 'Tắt'}
+                        </button>
+                    </div>
+                </div>
+
+                {permission === 'denied' && (
+                    <div className="warning-banner">
+                        ⚠️ Thông báo bị chặn. Vui lòng bật trong cài đặt trình duyệt.
+                    </div>
+                )}
+
+                {enabled && (
+                    <>
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">Nhắc nhở trước</span>
+                                <span className="setting-description">
+                                    Thời gian trước deadline để nhắc nhở
+                                </span>
+                            </div>
+                            <div className="reminder-options">
+                                {reminderOptions.map((mins) => (
+                                    <button
+                                        key={mins}
+                                        className={`reminder-option ${reminderMinutes === mins ? 'active' : ''}`}
+                                        onClick={() => updateSettings({ reminderMinutes: mins })}
+                                    >
+                                        {mins < 60 ? `${mins}p` : `${mins / 60}h`}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">Âm thanh</span>
+                                <span className="setting-description">
+                                    Phát âm thanh khi có thông báo
+                                </span>
+                            </div>
+                            <button
+                                className={`toggle-btn ${soundEnabled ? 'active' : ''}`}
+                                onClick={() => updateSettings({ soundEnabled: !soundEnabled })}
+                            >
+                                {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                                {soundEnabled ? 'Bật' : 'Tắt'}
+                            </button>
+                        </div>
+
+                        <button
+                            className="btn btn-ghost test-btn"
+                            onClick={() => {
+                                useNotificationStore.getState().sendNotification(
+                                    '🔔 Thông báo test',
+                                    { body: 'Thông báo hoạt động bình thường!' }
+                                );
+                            }}
+                        >
+                            <Bell size={16} />
+                            Gửi thông báo test
+                        </button>
+                    </>
+                )}
             </div>
 
-            <button
-              className="btn btn-ghost test-btn"
-              onClick={() => {
-                useNotificationStore.getState().sendNotification(
-                  '🔔 Thông báo test',
-                  { body: 'Thông báo hoạt động bình thường!' }
-                );
-              }}
-            >
-              <Bell size={16} />
-              Gửi thông báo test
-            </button>
-          </>
-        )}
-      </div>
+            {/* Break Reminder Section */}
+            <div className="settings-section">
+                <h3>🧘 Nhắc nghỉ ngơi</h3>
 
-      {/* About Section */}
-      <div className="settings-section">
-        <h3>ℹ️ Thông tin</h3>
-        <div className="about-info">
-          <p><strong>WorkFlow</strong> - Quản lý công việc thông minh</p>
-          <p>Phiên bản: 1.0.0</p>
-          <p>Phím tắt:</p>
-          <ul>
-            <li><kbd>Ctrl</kbd> + <kbd>K</kbd> - Thêm task nhanh</li>
-          </ul>
-        </div>
-      </div>
+                <div className="setting-item">
+                    <div className="setting-info">
+                        <span className="setting-label">Bật nhắc nghỉ</span>
+                        <span className="setting-description">
+                            Tự động nhắc nghỉ ngơi sau mỗi {breakReminder?.intervalMinutes || 45} phút
+                        </span>
+                    </div>
+                    <button
+                        className={`toggle-btn ${breakReminder?.enabled ? 'active' : ''}`}
+                        onClick={() => updateBreakReminder({ enabled: !breakReminder?.enabled })}
+                    >
+                        {breakReminder?.enabled ? 'Bật' : 'Tắt'}
+                    </button>
+                </div>
 
-      <style>{`
+                {breakReminder?.enabled && (
+                    <>
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">Khoảng thời gian</span>
+                                <span className="setting-description">
+                                    Nhắc nghỉ sau mỗi bao nhiêu phút làm việc
+                                </span>
+                            </div>
+                            <div className="reminder-options">
+                                {breakIntervalOptions.map((mins) => (
+                                    <button
+                                        key={mins}
+                                        className={`reminder-option ${breakReminder?.intervalMinutes === mins ? 'active' : ''}`}
+                                        onClick={() => updateBreakReminder({ intervalMinutes: mins })}
+                                    >
+                                        {mins}p
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">Hiển thị bài tập</span>
+                                <span className="setting-description">
+                                    Gợi ý bài tập ngắn khi nghỉ (vươn vai, nhìn xa...)
+                                </span>
+                            </div>
+                            <button
+                                className={`toggle-btn ${breakReminder?.showExercises ? 'active' : ''}`}
+                                onClick={() => updateBreakReminder({ showExercises: !breakReminder?.showExercises })}
+                            >
+                                {breakReminder?.showExercises ? 'Bật' : 'Tắt'}
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* About Section */}
+            <div className="settings-section">
+                <h3>ℹ️ Thông tin</h3>
+                <div className="about-info">
+                    <p><strong>WorkFlow</strong> - Quản lý công việc thông minh</p>
+                    <p>Phiên bản: 1.0.0</p>
+                    <p>Phím tắt:</p>
+                    <ul>
+                        <li><kbd>Ctrl</kbd> + <kbd>K</kbd> - Thêm task nhanh</li>
+                    </ul>
+                </div>
+            </div>
+
+            <style>{`
         .settings-view {
           max-width: 600px;
         }
@@ -356,7 +468,54 @@ export default function SettingsView() {
           font-size: 0.75rem;
           font-family: monospace;
         }
+
+        .setting-controls {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+        }
+
+        .toggle-btn-sm {
+          padding: var(--spacing-xs) var(--spacing-sm);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          background: var(--bg-secondary);
+          color: var(--text-muted);
+          cursor: pointer;
+          font-size: 0.8rem;
+          transition: all var(--transition-fast);
+        }
+
+        .toggle-btn-sm.active {
+          background: var(--primary);
+          border-color: var(--primary);
+          color: white;
+        }
+
+        .test-section {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--spacing-md);
+        }
+
+        .test-buttons-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: var(--spacing-sm);
+          width: 100%;
+        }
+
+        .test-buttons-grid .btn {
+          justify-content: center;
+          font-size: 0.8rem;
+        }
+
+        @media (max-width: 500px) {
+          .test-buttons-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
       `}</style>
-    </div>
-  );
+        </div>
+    );
 }

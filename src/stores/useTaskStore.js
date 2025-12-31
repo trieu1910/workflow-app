@@ -21,6 +21,34 @@ const VALID_TRANSITIONS = {
     [STAGES.SOMEDAY]: [STAGES.INBOX, STAGES.PRIORITIZED], // Can activate later
 };
 
+// ========== SELECTORS (use with useShallow for optimal re-renders) ==========
+// Selector cho stage counts - tránh re-render khi tasks thay đổi nhưng counts không đổi
+export const selectStageCounts = (state) => ({
+    inbox: state.tasks.filter(t => t.stage === STAGES.INBOX).length,
+    prioritized: state.tasks.filter(t => t.stage === STAGES.PRIORITIZED).length,
+    scheduled: state.tasks.filter(t => t.stage === STAGES.SCHEDULED).length,
+    inProgress: state.tasks.filter(t => t.stage === STAGES.IN_PROGRESS).length,
+    done: state.tasks.filter(t => t.stage === STAGES.DONE).length,
+    someday: state.tasks.filter(t => t.stage === STAGES.SOMEDAY).length,
+});
+
+// Selector cho today tasks - chỉ re-render khi today tasks thay đổi
+export const selectTodayTasks = (state) => {
+    const today = new Date().toISOString().split('T')[0];
+    return state.tasks.filter(t => {
+        if (t.stage === STAGES.DONE) return false;
+        if (t.dueDate === today) return true;
+        if (t.scheduledFor === today) return true;
+        return false;
+    });
+};
+
+// Selector cho MITs hôm nay
+export const selectTodayMITs = (state) => {
+    const today = new Date().toISOString().split('T')[0];
+    return state.tasks.filter(t => t.isMIT && t.mitDate === today && !t.completed);
+};
+
 const generateId = () => {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };

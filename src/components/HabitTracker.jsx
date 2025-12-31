@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Plus, Trash2, X, Flame, Check, Target, BarChart2 } from 'lucide-react';
 import { useHabitStore } from '../stores/useHabitStore';
 import { useGoalStore, LIFE_AREAS } from '../stores/useGoalStore';
 import HabitHeatmap from './HabitHeatmap';
+import { calculateStreak, getLast7Days, isHabitChecked, formatLocalDate } from '../utils/habitUtils';
 
 const HABIT_ICONS = ['✅', '💪', '📚', '🧘', '🏃', '💧', '🌙', '📝', '🎯', '💰'];
 const HABIT_COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444', '#ec4899'];
@@ -20,69 +21,40 @@ export default function HabitTracker() {
         goalId: '',
     });
 
-    const todayStatus = getTodayStatus();
-    const today = new Date().toISOString().split('T')[0];
+    // Memoize các giá trị tính toán
+    const todayStatus = useMemo(() => getTodayStatus(), [habits, checkIns]);
+    const today = useMemo(() => formatLocalDate(new Date()), []);
 
-    // Format date in local timezone (not UTC)
-    const formatLocalDate = (d) => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+    // Memoize last 7 days - không đổi trong suốt component lifecycle
+    const last7Days = useMemo(() => getLast7Days(), []);
 
-    // Calculate streak reactively from checkIns state
-    const calculateStreak = (habitId) => {
-        const habitCheckIns = checkIns[habitId] || {};
-        if (Object.keys(habitCheckIns).length === 0) return 0;
+    // Memoize active habits
+    const activeHabits = useMemo(() => habits.filter(h => h.active), [habits]);
 
-        let streak = 0;
-        const todayDate = new Date();
+    // Memoize active goals cho dropdown
+    const activeGoals = useMemo(() => goals.filter(g => g.status === 'active'), [goals]);
 
-        for (let i = 0; i <= 365; i++) {
-            const checkDate = new Date(todayDate);
-            checkDate.setDate(todayDate.getDate() - i);
-            const dateStr = formatLocalDate(checkDate);
+    // Memoize streak calculator - sử dụng utility function
+    const getHabitStreak = useCallback((habitId) => {
+        return calculateStreak(checkIns, habitId);
+    }, [checkIns]);
 
-            if (habitCheckIns[dateStr]) {
-                streak++;
-            } else if (i > 0) {
-                break;
-            }
-        }
-        return streak;
-    };
+    // Memoize check function
+    const isChecked = useCallback((habitId, date) => {
+        return isHabitChecked(checkIns, habitId, date);
+    }, [checkIns]);
 
-    // Check if habit is checked for a date (reactive)
-    const isChecked = (habitId, date) => {
-        return !!(checkIns[habitId] && checkIns[habitId][date]);
-    };
-
-    const handleSubmit = (e) => {
+    const handleSubmit = useCallback((e) => {
         e.preventDefault();
         if (!formData.title.trim()) return;
         addHabit(formData);
         setFormData({ title: '', icon: '✅', color: '#22c55e', goalId: '' });
         setShowForm(false);
-    };
+    }, [formData, addHabit]);
 
-    // Get last 7 days for display
-    const getLast7Days = () => {
-        const days = [];
-        const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            days.push({
-                date: d.toISOString().split('T')[0],
-                dayName: dayNames[d.getDay()],
-                isToday: i === 0,
-            });
-        }
-        return days;
-    };
-
-    const last7Days = getLast7Days();
+    const handleToggleCheckIn = useCallback((habitId, date) => {
+        toggleCheckIn(habitId, date);
+    }, [toggleCheckIn]);
 
     return (
         <div className="habit-tracker">
@@ -191,7 +163,7 @@ export default function HabitTracker() {
                                 onChange={(e) => setFormData({ ...formData, goalId: e.target.value })}
                             >
                                 <option value="">-- Không liên kết --</option>
-                                {goals.filter(g => g.status === 'active').map(goal => (
+                                {activeGoals.map(goal => (
                                     <option key={goal.id} value={goal.id}>
                                         {LIFE_AREAS[goal.area]?.icon} {goal.title}
                                     </option>
@@ -208,14 +180,14 @@ export default function HabitTracker() {
             )}
 
             {/* Habits List */}
-            {habits.filter(h => h.active).length === 0 ? (
+            {activeHabits.length === 0 ? (
                 <div className="empty-state">
                     <p>Chưa có thói quen nào. Hãy bắt đầu xây dựng những thói quen tốt!</p>
                 </div>
             ) : (
                 <div className="habits-list">
-                    {habits.filter(h => h.active).map(habit => {
-                        const streak = calculateStreak(habit.id);
+                    {activeHabits.map(habit => {
+                        const streak = getHabitStreak(habit.id);
                         const checkedToday = isChecked(habit.id, today);
                         const linkedGoal = goals.find(g => g.id === habit.goalId);
 
@@ -224,7 +196,7 @@ export default function HabitTracker() {
                                 <div className="habit-header">
                                     <button
                                         className={`habit-check ${checkedToday ? 'checked' : ''}`}
-                                        onClick={() => toggleCheckIn(habit.id, today)}
+                                        onClick={() => handleToggleCheckIn(habit.id, today)}
                                     >
                                         {checkedToday ? <Check size={20} /> : <span className="habit-icon">{habit.icon}</span>}
                                     </button>
@@ -261,7 +233,7 @@ export default function HabitTracker() {
                                             <div
                                                 key={day.date}
                                                 className={`day-cell ${checked ? 'checked' : ''} ${day.isToday ? 'today' : ''}`}
-                                                onClick={() => toggleCheckIn(habit.id, day.date)}
+                                                onClick={() => handleToggleCheckIn(habit.id, day.date)}
                                             >
                                                 <span className="day-name">{day.dayName}</span>
                                                 <span className="day-dot">{checked ? '✓' : '○'}</span>
